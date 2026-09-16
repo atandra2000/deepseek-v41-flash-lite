@@ -1,0 +1,45 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+
+# Training outputs
+checkpoints/
+runs/
+
+# Data (generated — manifests and configs stay in git)
+data/pretrain_*.bin
+data/pretrain_*/
+data/datasets/
+data/*.bin
+data/*.npy
+
+# Results artifacts (reports stay in git)
+results/*.pt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# HuggingFace cache
+.huggingface/
+
+# Temp
+*.tmp
+*.temp
+
+# Local tool artifacts
+.benchmarks/
+.qoder/
