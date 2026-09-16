@@ -32,20 +32,21 @@ def test_config_loads_and_sha_embeds(cfg):
 
 def test_ledger_bands(cfg, model):
     total = sum(p.numel() for p in model.parameters())
-    assert abs(total - 1.177428125e9) < 1e6  # pinned exact figure; re-run ledger.py on drift
+    assert abs(total - 1.178268637e9) < 1e6  # pinned exact figure; re-run ledger.py on drift
     assert (1 - 0.05) * 1.16e9 <= total <= (1 + 0.05) * 1.16e9
 
     # active (text path, excl. embedding/vision/dspark/engram-tables) == re-derived contract figure
     active = 0
     for blk in model.blocks:
-        for m in (blk.attn, blk.compressor, blk.indexer, blk.ffn.gate, blk.hc_attn, blk.hc_ffn, blk.attn_norm, blk.ffn_norm):
+        for m in (blk.attn, blk.compressor, blk.ced_projection, blk.indexer, blk.ffn.gate,
+                  blk.hc_attn, blk.hc_ffn, blk.attn_norm, blk.ffn_norm):
             if m is not None:
                 active += sum(p.numel() for p in m.parameters())
         active += sum(p.numel() for p in blk.ffn.shared_experts.parameters())
         active += sum(p.numel() for p in blk.ffn.experts.parameters()) * cfg.n_activated_experts / cfg.n_routed_experts
     active += sum(p.numel() for p in model.norm.parameters())
-    assert abs(active - 217_688_464) < 1  # re-derived Phase-0 figure
-    assert (1 - 0.05) * 217.7e6 <= active <= (1 + 0.05) * 217.7e6
+    assert abs(active - 218_528_976) < 1  # re-derived figure (incl. decoder CED projections)
+    assert (1 - 0.05) * 218.5e6 <= active <= (1 + 0.05) * 218.5e6
 
 
 def test_producer_and_mode_maps(cfg):
@@ -64,11 +65,12 @@ def test_producer_and_mode_maps(cfg):
 
 
 def test_layer_mode_contract(cfg):
-    # Lite encoders are all m=2 (no SWA-only encoders, unlike upstream 0-1);
-    # only DSpark layers are swa.
+    # upstream head pattern: backbone layers 0-1 are SWA-only; every other
+    # backbone layer compresses (m=2 or m=1); DSpark layers are swa.
     modes = {r["layer"]: r["mode"] for r in mode_table(cfg)}
-    for l in range(cfg.n_layers):
-        assert modes[l] != "swa", "backbone layers all compress (m=2 or m=1)"
+    assert modes[0] == modes[1] == "swa"
+    for l in range(2, cfg.n_layers):
+        assert modes[l] != "swa", f"backbone layer {l} must compress"
     for l in range(cfg.n_layers, len(cfg.compress_ratios)):
         assert layer_mode(cfg, l) == "swa"
 

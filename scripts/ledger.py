@@ -23,7 +23,7 @@ from models.transformer import Transformer
 # 1.05M/layer) from its attention/layer arithmetic. See
 # docs/architecture-contract.md "Task-2 ledger assertions".
 TOTAL_TARGET = 1.16e9
-ACTIVE_TARGET = 217.7e6
+ACTIVE_TARGET = 218.5e6
 BAND = 0.05
 
 
@@ -57,6 +57,7 @@ def main() -> int:
     for blk in model.blocks:
         cats["attention"] += count(blk.attn)
         cats["compressor"] += count(blk.compressor) if blk.compressor else 0
+        cats["ced_projection"] = cats.get("ced_projection", 0) + (count(blk.ced_projection) if blk.ced_projection else 0)
         cats["indexer"] += count(blk.indexer) if blk.indexer else 0
         cats["moe_routed"] += count(blk.ffn.experts)
         cats["moe_shared"] += count(blk.ffn.shared_experts)
@@ -82,6 +83,7 @@ def main() -> int:
     active = (
         cats["attention"]
         + cats["compressor"]
+        + cats.get("ced_projection", 0)
         + cats["indexer"]
         + cats["moe_routed"] * cfg.n_activated_experts / cfg.n_routed_experts
         + cats["moe_shared"]
@@ -105,7 +107,7 @@ def main() -> int:
         failures.append(f"total params {total:,} outside 1.16B ±5% [{1.104e9:,.0f}..{1.216e9:,.0f}]")
     if not (1 - BAND) * ACTIVE_TARGET <= active <= (1 + BAND) * ACTIVE_TARGET:
         failures.append(
-            f"active params {active:,.0f} outside 217.7M ±5% [{0.95 * ACTIVE_TARGET:,.0f}..{1.05 * ACTIVE_TARGET:,.0f}]"
+            f"active params {active:,.0f} outside 218.5M ±5% [{0.95 * ACTIVE_TARGET:,.0f}..{1.05 * ACTIVE_TARGET:,.0f}]"
         )
     if training_bytes > 16 * 2**30:
         failures.append(f"training footprint {training_bytes / 2**30:.1f} GiB exceeds 16 GiB envelope")
