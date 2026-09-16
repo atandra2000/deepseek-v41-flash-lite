@@ -74,10 +74,7 @@ def load_base():
 
 def ced_toy_config(**over) -> LiteConfig:
     """Toy with the full CSA2 path: enc m=2 (layer 0), dec m=1 (layer 1),
-    index sources [0, 1], candidate source 1."""
-    return toy_config(
-        compress_ratios=(2, 1),
-        index_source_layers=(0, 1),
-        candidate_source_layer=1,
-        **over,
-    )
+    index sources [0, 1], candidate source 1. Overrides still win."""
+    d = dict(compress_ratios=(2, 1), index_source_layers=(0, 1), candidate_source_layer=1)
+    d.update(over)
+    return toy_config(**d)

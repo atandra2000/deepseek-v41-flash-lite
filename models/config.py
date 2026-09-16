@@ -32,6 +32,7 @@ class LiteConfig:
     n_layers: int
     n_encoder_layers: int
     compress_ratios: tuple[int, ...]
+    ced_z_rank: int
     d_model: int
     n_heads: int
     head_dim: int
@@ -113,6 +114,21 @@ class LiteConfig:
 
     def is_kv_source(self, layer_id: int) -> bool:
         return layer_id in self.kv_source_layers
+
+    def global_kv_path(self, layer_id: int) -> str:
+        """How layer_id obtains its global KV (contract T1 + design §4.1):
+        'own' (kv source), 'cache' (same-ratio consumer reads the producer's
+        compressed cache), 'project' (decoder CED projection from producer
+        hidden states), 'none' (SWA-only)."""
+        r = self.compress_ratios[layer_id]
+        if r == 0:
+            return "none"
+        if layer_id in self.kv_source_layers:
+            return "own"
+        producers = [l for l in self.kv_source_layers if l < layer_id]
+        if producers and self.compress_ratios[producers[-1]] == r:
+            return "cache"
+        return "project"
 
     def is_index_source(self, layer_id: int) -> bool:
         return layer_id in self.index_source_layers

@@ -97,15 +97,12 @@ class MoE(nn.Module):
         x = x.view(-1, self.d_model)
         weights, indices = self.gate(x, image_mask.flatten() if image_mask is not None else None)
         y = torch.zeros_like(x, dtype=torch.float32)
-        flat_indices = indices.flatten()
-        sorted_idx = torch.argsort(flat_indices, stable=True)
-        counts = torch.bincount(flat_indices, minlength=self.n_routed_experts)
-        offsets = torch.cumsum(counts, 0) - counts
         for i in range(self.n_routed_experts):
-            n = int(counts[i])
-            if n == 0:
+            mask = indices == i  # [n, topk]
+            rows = mask.any(-1).nonzero(as_tuple=True)[0]
+            if rows.numel() == 0:
                 continue
-            rows = sorted_idx[offsets[i] : offsets[i] + n]
-            y[rows] += self.experts[i](x[rows], weights[rows].float().unsqueeze(-1))
+            w_i = (weights * mask).sum(-1, keepdim=True)[rows]  # [n_sel, 1]
+            y[rows] += self.experts[i](x[rows], w_i.float())
         y += self.shared_experts(x)
         return y.type_as(x).view(shape)

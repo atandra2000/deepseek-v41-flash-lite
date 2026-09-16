@@ -5,7 +5,8 @@
 
   "n_layers": 24,
   "n_encoder_layers": 12,
-  "compress_ratios": [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
+  "compress_ratios": [0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0],
+  "ced_z_rank": 64,
   "d_model": 1024,
   "n_heads": 16,
   "head_dim": 64,
@@ -44,7 +45,7 @@
   "engram_layer_ids": [1, 14],
   "engram_num_embeddings": [1000000, 1000000],
   "engram_max_ngram_size": 3,
-  "engram_vocab_size": 16000000,
+  "engram_vocab_size": 60000,
   "engram_n_heads": 8,
   "engram_head_dim": 16,
   "engram_pad_token_id": 65410,

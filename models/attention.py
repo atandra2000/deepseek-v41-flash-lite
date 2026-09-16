@@ -70,6 +70,7 @@ class SharedAttentionRuntime:
         self.compress_kv: torch.Tensor | None = None
         self.index_k: torch.Tensor | None = None
         self.topk_idxs: torch.Tensor | None = None
+        self.topk_ratio: int | None = None  # compress space the indices address
         self.candidates: torch.Tensor | None = None
 
 
