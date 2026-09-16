@@ -10,7 +10,7 @@ to the candidate pool), and publishes top-k indices that consumers reuse.
 import torch
 from torch import nn
 
-from .layers import RMSNorm, apply_rotary_emb, init_std_
+from .layers import RMSNorm, apply_rotary_emb, init_std_, precompute_freqs_cis
 
 
 class Indexer(nn.Module):
@@ -31,6 +31,10 @@ class Indexer(nn.Module):
 
         self.wq_b = nn.Linear(cfg.q_lora_rank, self.n_heads * self.index_head_dim, bias=False)
         self.weights_proj = nn.Linear(cfg.d_model, self.n_heads, bias=False)
+        # same rotary table as the owning attention (compress theta for m>1)
+        theta = cfg.compress_rope_theta if self.compress_ratio else cfg.rope_theta
+        self.register_buffer("freqs_cis", precompute_freqs_cis(self.rope_head_dim, self.max_seq_len, theta),
+                             persistent=False)
         self.k_cache: torch.Tensor | None = None
         if self.owns_k:
             self.wk = nn.Linear(cfg.head_dim, self.index_head_dim, bias=False)
@@ -40,7 +44,7 @@ class Indexer(nn.Module):
         if self.owns_k:
             init_std_(self.wk.weight)
 
-    def forward(self, x, qr, latent, start_pos, offset, compress_len, shared, freqs_cis):
+    def forward(self, x, qr, latent, start_pos, offset, compress_len, shared):
         """x [B,S,d]; qr [B,S,q_lora]; latent pre-RoPE [B,T,head_dim] (owners)
         or None; freqs_cis: the owning attention's rotary table (compress theta
         for compressing layers). Returns idxs [B,S,K] into the concatenated
@@ -49,6 +53,7 @@ class Indexer(nn.Module):
 
         bsz, seqlen, _ = x.shape
         ratio = self.compress_ratio
+        freqs_cis = self.freqs_cis
         end_pos = start_pos + seqlen
 
         if self.owns_k and latent is not None:

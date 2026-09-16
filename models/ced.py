@@ -191,7 +191,7 @@ def ced_attention_forward(attn, x: torch.Tensor, start_pos: int, ced: CEDRuntime
     # Production blocks always attach an indexer to index sources; the
     # reachable-idxs fallback exists for pool-less toy configs only.
     if attn.is_index_source and indexer is not None:
-        idxs = indexer(x, qr, latent, start_pos, offset, compress_len, shared, attn.freqs_cis)
+        idxs = indexer(x, qr, latent, start_pos, offset, compress_len, shared)
         shared.topk_idxs = idxs
         shared.topk_ratio = ratio
     elif shared.topk_idxs is not None and shared.topk_ratio == ratio:
