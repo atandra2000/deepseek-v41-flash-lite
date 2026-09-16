@@ -1,0 +1,6 @@
+torch>=2.4.0
+pyyaml>=6.0.1
+
+# Test-only dependencies (kept here so `pip install -r requirements.txt` is
+# enough for CI; not imported by model code).
+pytest>=8.0.0

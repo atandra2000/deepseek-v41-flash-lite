@@ -92,7 +92,10 @@ sufficient.
 - Active/layer ≈ 1.5M attn + 4.7M routed (top-2) + 2.4M shared ≈ 8.6M →
   **~205M active** (excl. embedding, upstream convention). The design must
   re-derive this ledger from the actual `nn.Module` tree in Phase 0 and fail
-  if it drifts >5% from these figures.
+  if it drifts >5% from these figures. *(Phase-0 re-derivation, 2026-09-16:
+  the 1.5M attention estimate omitted the grouped output projection `wo_b`
+  (d × o_groups·o_lora = 1.05M/layer); re-derived active = **217.7M** (+6.2%).
+  Config unchanged; see architecture-contract.md "Task-2 ledger assertions".)*
 - Memory: ~10 GB weights+optimizer+grads (AdamW: 2 fp32 states × 1.16B +
   fp32 master ≈ 14 GB — recount in Phase 0; still trivial on 4×80GB);
   activations <2 GB/gpu-shard at 16K with input checkpointing. **The binding

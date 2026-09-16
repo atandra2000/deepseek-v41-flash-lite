@@ -361,7 +361,13 @@ this contract cites prose.
 The ledger (Task 2) instantiates the module tree at the T12 dims and asserts:
 
 - total params ∈ 1.16B ±5% (all modules incl. ViT, DSpark, Engram);
-- active params ∈ 205M ±5% **excl. embedding** (upstream convention;
-  routed-expert contribution counted at top-k=2 + shared);
+- active params (text path, **excl. embedding**, upstream convention):
+  attention + compressor + indexer + routed top-2 + shared + gate + mHC + norms.
+  **Phase-0 re-derivation (2026-09-16): 217.7M, +6.2% over the design's 205M
+  estimate** — the design's "~1.5M attention/layer" omitted `wo_b` =
+  `d × o_groups·o_lora` = 1.05M/layer (attention is 1.9M/layer). Config knobs
+  are all design-pinned, so the design figure is corrected, not the config;
+  FLOPs 6·217.7e6·22e9 ≈ 2.87e19, still inside the design's 22–28h band.
+  Ledger band: 217.7M ±5% (drift bar).
 - AdamW state = 2 fp32 moments × total, + fp32 master weights; bytes reported,
   must fit the 4×80GB envelope with the design §3 margins.

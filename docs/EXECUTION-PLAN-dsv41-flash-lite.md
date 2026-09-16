@@ -25,14 +25,14 @@
 
 **Targets:** `docs/source-manifest.md`, `docs/architecture-contract.md`.
 
-- [ ] Pin the upstream repo commit (`deepseek-ai/DeepSeek-V4.1-Flash`,
+- [x] Pin the upstream repo commit (`deepseek-ai/DeepSeek-V4.1-Flash`,
       `inference/` + `encoding/` reference code) and the `config.json` hash.
-- [ ] Extract from the reference code (not prose): decoder→`kv_source_layer_ids`
+- [x] Extract from the reference code (not prose): decoder→`kv_source_layer_ids`
       consumer map, CSA2 mode-assignment table, candidate-pool construction
       order, indexer K projection path, Engram lookup/gating, DSpark draft
       + verify loop. Record each as a named data table with upstream line
       references.
-- [ ] Write the Lite producer map (enc layers 2 and 8; 12 enc / 12 dec;
+- [x] Write the Lite producer map (enc layers 2 and 8; 12 enc / 12 dec;
       3 CSA2 groups per side) as config data, swappable per the C3/C4 gates.
 
 **Verify:** a reviewer can trace every entry of `architecture-contract.md`
@@ -43,12 +43,15 @@ to a reference-code line or a config key; no entry says "per the report".
 **Targets:** `models/` `training/` `data/` `scripts/` `tests/`;
 `scripts/ledger.py`; `configs/lite-v3.json`.
 
-- [ ] Config module loads `lite-v3.json` (§3 of the design) and embeds
+- [x] Config module loads `lite-v3.json` (§3 of the design) and embeds
       sha256(config) in every artifact.
-- [ ] `ledger.py` instantiates the module tree at real dims and asserts
+- [x] `ledger.py` instantiates the module tree at real dims and asserts
       total 1.16B ±5%, active 205M ±5% (excl. embedding), and AdamW
-      optimizer-state bytes; fails loudly on drift.
-- [ ] Skeleton follows portfolio layout (DeepSeek-v3-Lite as the closest
+      optimizer-state bytes; fails loudly on drift. *(Phase-0 outcome: the
+      re-derived active figure is 217.7M — the design's 205M estimate omitted
+      the grouped output projection `wo_b`; design doc and
+      architecture-contract.md corrected, config unchanged.)*
+- [x] Skeleton follows portfolio layout (DeepSeek-v3-Lite as the closest
       sibling); no training code yet.
 
 **Verify:** `python scripts/ledger.py` passes; `pytest tests/ -q` green
