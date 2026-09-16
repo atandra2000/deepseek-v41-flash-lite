@@ -16,6 +16,7 @@ from .indexer import Indexer
 from .layers import RMSNorm, init_std_
 from .mhc import HCMixes
 from .moe import MoE
+from .vit import IMAGE, IMAGE_END, IMAGE_NEW_LINE, IMAGE_START
 
 
 class Block(nn.Module):
@@ -127,9 +128,54 @@ class Transformer(nn.Module):
             return self.head.weight
         return self.embed.weight
 
-    def forward(self, input_ids, start_pos: int = 0, ngram_hashes=None, engram_mask=None, image_mask=None):
+    # ---- vision (contract T10) ----
+
+    def encode_image(self, patches: torch.Tensor, n_vit_h: int, n_vit_w: int) -> torch.Tensor:
+        """Patch grid -> aligner rows [ceil(n_h/r)*ceil(n_w/r), d_model]."""
+        return self.aligner(self.vision(patches, n_vit_h, n_vit_w), n_vit_h, n_vit_w)
+
+    def merge_image_embeddings(self, images, h: torch.Tensor) -> None:
+        """Overwrite each image's token span in h in place (upstream
+        model.py:1228-1239): IMAGE slots take aligner rows in reading order,
+        delimiters take learned embeddings. images: per-sample lists of
+        vit.ImageSpan (or None)."""
+        for i, sample in enumerate(images):
+            for img in sample or ():
+                types = img.types.to(h.device)
+                span = h[i, img.start : img.start + types.numel()]
+                span[types == IMAGE_START] = self.image_start.to(h.dtype)
+                span[types == IMAGE_END] = self.image_end.to(h.dtype)
+                span[types == IMAGE_NEW_LINE] = self.image_newline.to(h.dtype)
+                embeds = self.encode_image(img.patches.to(h.device), img.n_vit_h, img.n_vit_w)
+                assert (types == IMAGE).sum() == embeds.size(0), "IMAGE slot count != aligner rows"
+                span[types == IMAGE] = embeds.to(h.dtype)
+
+    # ---- DSpark drafting (contract T6) ----
+
+    def forward_spec(self, input_ids, main_hidden, start_pos: int = 0, temperature: float = 0.0):
+        """Draft step. Prefill (start_pos 0) only seeds the rings -> None;
+        decode returns (output_ids [B, block+1], logits [B, block, vocab]
+        fp32, confidence [B, block]). main_hidden: the target layers'
+        attention-input hiddens concatenated on the feature dim (forward's
+        main_hiddens, cat'd)."""
+        if not self.dspark:
+            return None
+        bsz = input_ids.size(0)
+        h, main_x = self.dspark[0].forward_embed(self, main_hidden, input_ids)
+        pre_mix = h.new_zeros(bsz, h.size(1), self.cfg.hc_mult, dtype=torch.float32)
+        pre_mix[:, :, 0] = 1.0
+        for blk in self.dspark:
+            h, pre_mix = blk(h, start_pos, pre_mix, main_x)
+        if start_pos == 0:
+            return None
+        return self.dspark[-1].forward_head(h, pre_mix, input_ids, self, temperature)
+
+    def forward(self, input_ids, start_pos: int = 0, ngram_hashes=None, engram_mask=None, image_mask=None,
+                images=None):
         """Full forward (prefill and single-token decode). Returns (logits fp32
-        [B,S,vocab], main_hiddens list-or-None)."""
+        [B,S,vocab], main_hiddens list-or-None). images: per-sample lists of
+        vit.ImageSpan — spans must lie inside the first (start_pos 0) chunk;
+        image_mask marks every span position (engram skip + MoE bias_vl)."""
         cfg = self.cfg
         bsz, seqlen = input_ids.shape
         shared = self.shared_attn
@@ -138,19 +184,25 @@ class Transformer(nn.Module):
         hashes = self.ngram_hash(input_ids, start_pos, engram_mask) if self.ngram_hash is not None else None
 
         h = self.embed(input_ids)
+        if images is not None:
+            assert start_pos == 0, "image spans must be prefilled in a single chunk"
+            self.merge_image_embeddings(images, h)
         h = h.unsqueeze(2).repeat(1, 1, cfg.hc_mult, 1)
         pre_mix = h.new_zeros(bsz, seqlen, cfg.hc_mult, dtype=torch.float32)
         pre_mix[:, :, 0] = 1.0
 
         main_hiddens = []
         for blk in self.blocks:
+            if blk.layer_id in cfg.dspark_target_layer_ids:
+                # the MTP head reads the ATTENTION INPUT of its target layers
+                # (contract T6, upstream model.py:1264-1266), i.e. the stream
+                # entering the block
+                main_hiddens.append(h.mean(dim=2))
             h, pre_mix = blk(h, start_pos, pre_mix, ced, ngram_hashes, engram_mask, image_mask)
             if blk.layer_id in cfg.kv_source_layers:
                 # producers publish their OUTPUT hidden state (collapsed to one
                 # stream) for the decoder CED projection (design §4.1)
                 ced.producer_hidden[blk.layer_id] = HCMixes.hc_pre(h, pre_mix)
-            if blk.layer_id in cfg.dspark_target_layer_ids:
-                main_hiddens.append(h.mean(dim=2))
 
         # final collapse uses the last block's ffn pre-coefficients
         h = HCMixes.hc_pre(h, pre_mix)
