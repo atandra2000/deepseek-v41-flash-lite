@@ -89,7 +89,7 @@ class Engram(nn.Module):
         self.embed = nn.Embedding(num_embeddings, cfg.engram_head_dim)
         self.wkv = nn.Linear(n_hash_cols * cfg.engram_head_dim, self.dim * (self.hc_mult + 1), bias=False)
         # Lite zero-init gate: output = gate_scale * sigmoid_gate * value (exact 0 at init)
-        self.gate_scale = nn.Parameter(torch.zeros(self.hc_mult, self.dim))
+        self.gate_scale = nn.Parameter(torch.zeros(self.hc_mult))
         self.eps = cfg.norm_eps
         self.q_weight = nn.Parameter(torch.ones(self.hc_mult, self.dim))
         self.k_weight = nn.Parameter(torch.ones(self.hc_mult, self.dim))
@@ -100,5 +100,74 @@ class Engram(nn.Module):
         init_std_(self.wkv.weight)
 
     def forward(self, x: torch.Tensor, hash_ids: torch.Tensor, token_mask: torch.Tensor | None = None) -> torch.Tensor:
-        """x: [B, L, hc, d]; hash_ids: [B, L, n_hash_cols]; token_mask: [B, L]."""
-        raise NotImplementedError("Task 6: engram forward (gate zero-init asserted in tests)")
+        """x: [B, L, hc, d]; hash_ids: [B, L, n_hash_cols]; token_mask: [B, L]
+        (False shuts the gate). Upstream model.py:350-365 + Lite zero-init
+        gate_scale (exact 0 output at init)."""
+        values = self.embed(hash_ids)  # [B,L,C,head_dim]
+        kv = self.wkv(values.flatten(-2))
+        key, value = kv.split([self.hc_mult * self.dim, self.dim], dim=-1)
+        key = key.float().unflatten(-1, (self.hc_mult, self.dim))
+        weight = self.q_weight.float() * self.k_weight.float()  # only ever used as a product
+        h = x.float()
+        # normalized per (token, hc copy) over d, NOT jointly over the copies
+        rstd = torch.rsqrt(h.square().mean(-1) + self.eps) * torch.rsqrt(key.square().mean(-1) + self.eps)
+        dot = (h * weight * key).sum(-1) * rstd * self.dim**-0.5
+        gate = torch.sigmoid(torch.copysign(dot.abs().clamp_min(1e-6).sqrt(), dot))
+        if token_mask is not None:
+            gate = gate.masked_fill(~token_mask.unsqueeze(-1), 0)
+        gate = gate * self.gate_scale  # Lite: zero-init, exact-0 output at step 0
+        return (h + gate.unsqueeze(-1) * value.float().unsqueeze(-2)).to(x.dtype)
+
+
+class NgramHashState(nn.Module):
+    """Owns the hash buffers (compressed token map, per-layer multipliers,
+    prime buckets, ring cache) and produces hash ids for the Engram lookups."""
+
+    def __init__(self, cfg, max_seq_len: int, token_map: torch.Tensor | None = None):
+        super().__init__()
+        self.cfg = cfg
+        self.max_ngram = cfg.engram_max_ngram_size
+        self.pad_id = cfg.engram_pad_token_id
+        compressed_vocab = cfg.engram_compressed_vocab_size or cfg.vocab_size
+        multipliers = NgramHash.compute_multipliers(cfg.engram_layer_ids, self.max_ngram, compressed_vocab)
+        primes = NgramHash.build_primes(cfg.engram_layer_ids, self.max_ngram, cfg.engram_n_heads,
+                                        cfg.engram_vocab_size)
+        offsets = torch.cumsum(
+            torch.tensor(
+                [
+                    [0] + [p for per_ngram in layer for p in per_ngram][:-1]
+                    for layer in primes
+                ],
+                dtype=torch.int64,
+            ),
+            dim=1,
+        )
+        if token_map is None:
+            token_map = torch.arange(cfg.vocab_size, dtype=torch.int64)  # identity (Lite D4 default)
+        self.register_buffer("multipliers", multipliers, persistent=False)
+        self.register_buffer("primes", torch.tensor(primes, dtype=torch.int64), persistent=False)
+        self.register_buffer("offsets", offsets, persistent=False)
+        self.register_buffer("token_map", token_map, persistent=False)
+        self.cache: torch.Tensor | None = None
+        # table rows must cover every bucket (upstream: num_embeddings >= sum of primes)
+        total = int(self.offsets[:, -1].max()) + int(self.primes[:, -1, -1].max())
+        for layer_i, layer_id in enumerate(cfg.engram_layer_ids):
+            assert cfg.engram_num_embeddings[layer_i] >= total, (
+                f"engram table {layer_i} ({cfg.engram_num_embeddings[layer_i]:,}) too small for "
+                f"hash space ({total:,}); raise engram_num_embeddings or lower engram_vocab_size"
+            )
+
+    def forward(self, input_ids: torch.Tensor, start_pos: int, token_mask: torch.Tensor | None) -> torch.Tensor:
+        """input_ids [B,L] -> hash ids [B, L, n_engram_layers, n_hash_cols]."""
+        compressed = self.token_map[input_ids]
+        if token_mask is not None:
+            compressed = torch.where(token_mask, compressed, torch.tensor(NgramHash.DEAD, dtype=compressed.dtype))
+        if self.cache is None:
+            self.cache = torch.zeros(input_ids.size(0), self.cfg.context_train_stage2, dtype=torch.int64,
+                                     device=input_ids.device)
+        self.cache[: input_ids.size(0), start_pos : start_pos + input_ids.size(1)] = compressed
+        positions = torch.arange(start_pos, start_pos + input_ids.size(1), device=input_ids.device)
+        positions = positions.unsqueeze(0).expand(input_ids.size(0), -1)
+        # gather lookbacks from the full cache (decode chunks are 1 token wide)
+        return NgramHash.forward(self.cache[: input_ids.size(0)], positions, self.pad_id,
+                                 self.multipliers, self.primes, self.offsets)

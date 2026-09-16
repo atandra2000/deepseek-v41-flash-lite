@@ -63,9 +63,9 @@ to a reference-code line or a config key; no entry says "per the report".
 
 **Targets:** `models/attention.py`, `tests/test_attention.py`.
 
-- [ ] MLA-style low-rank q/kv (q_lora 256, o_lora 256, 4 groups) + RoPE;
+- [x] MLA-style low-rank q/kv (q_lora 256, o_lora 256, 4 groups) + RoPE;
       SWA-128 branch, layer-local KV.
-- [ ] Toy config (2L, d64) runs forward+backward; causality tested by
+- [x] Toy config (2L, d64) runs forward+backward; causality tested by
       perturbing future tokens; window boundary tests.
 
 **Verify:** `pytest tests/test_attention.py -q` green.
@@ -74,9 +74,9 @@ to a reference-code line or a config key; no entry says "per the report".
 
 **Targets:** `models/ced.py`, `tests/test_ced.py`.
 
-- [ ] Encoder layers compute compressed global KV (m=2); decoder layers
+- [x] Encoder layers compute compressed global KV (m=2); decoder layers
       project from the producer map via layer-owned `W^KV_l`, `W^Z_l`.
-- [ ] Assert prefill never runs decoder full self-attention over the global
+- [x] Assert prefill never runs decoder full self-attention over the global
       stream (the O(N·L/2) contract).
 
 **Verify:** toy e2e with CED on/off; shapes + causality + producer-map
@@ -86,10 +86,10 @@ swap test green.
 
 **Targets:** `models/csa2.py`, `models/indexer.py`, `tests/test_csa2.py`.
 
-- [ ] Full/Reindex/Reuse modes as a per-layer table; first Full-mode decoder
+- [x] Full/Reindex/Reuse modes as a per-layer table; first Full-mode decoder
       layer builds the 1024×8 pool; Reindex layers select top-k 256 via the
       8h×64 indexer; Reuse layers consume the previous selection.
-- [ ] Cross-check selected-index overlap against the upstream reference
+- [x] Cross-check selected-index overlap against the upstream reference
       implementation on a fixed small input (the Phase-0 oracle).
 
 **Verify:** `pytest tests/test_csa2.py -q`; oracle comparison report
@@ -100,11 +100,11 @@ committed under `tests/golden/`.
 **Targets:** `models/moe.py`, `models/mhc.py`, `models/engram.py`,
 `models/transformer.py`, `tests/test_forward.py`.
 
-- [ ] MoE 16+1 top-2 with `noaux_tc` bias balancing, router bias zero-init;
+- [x] MoE 16+1 top-2 with `noaux_tc` bias balancing, router bias zero-init;
       per-expert load counters exposed for the C1 gate.
-- [ ] mHC (mult 2, Sinkhorn 10) identity-init; Engram zero-init gate with
+- [x] mHC (mult 2, Sinkhorn 10) identity-init; Engram zero-init gate with
       gate-magnitude assert.
-- [ ] Tied 65,536 head; toy-dim end-to-end forward/backward over all modules;
+- [x] Tied 65,536 head; toy-dim end-to-end forward/backward over all modules;
       init-time invariants asserted (Engram output exactly 0, mHC ≈ identity).
 
 **Verify:** `pytest tests/test_forward.py -q`; ledger.py still passes.

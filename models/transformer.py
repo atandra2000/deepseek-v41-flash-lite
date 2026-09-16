@@ -79,6 +79,15 @@ class Transformer(nn.Module):
         self.embed = nn.Embedding(cfg.vocab_size, cfg.d_model)
         init_std_(self.embed.weight)
         self.blocks = nn.ModuleList([Block(cfg, l, cfg.n_layers, max_seq_len=max_seq_len) for l in range(cfg.n_layers)])
+        # cross-layer publishes persist across prefill/decode calls (upstream
+        # keeps one global SharedAttentionRuntime per process)
+        self.shared_attn = SharedAttentionRuntime()
+        self.ced_runtime = CEDRuntime(self.shared_attn)
+        self.ngram_hash = None
+        if cfg.engram_layer_ids:
+            from .engram import NgramHashState
+
+            self.ngram_hash = NgramHashState(cfg, max_seq_len or cfg.context_train_stage2)
         self.norm = RMSNorm(cfg.d_model, cfg.norm_eps)
         if cfg.tie_word_embeddings:
             self.head: nn.Linear | None = None
@@ -123,8 +132,10 @@ class Transformer(nn.Module):
         [B,S,vocab], main_hiddens list-or-None)."""
         cfg = self.cfg
         bsz, seqlen = input_ids.shape
-        shared = SharedAttentionRuntime()
-        ced = CEDRuntime(shared)
+        shared = self.shared_attn
+        ced = self.ced_runtime
+        engram_mask = None if image_mask is None else ~image_mask  # image spans take no n-grams
+        hashes = self.ngram_hash(input_ids, start_pos, engram_mask) if self.ngram_hash is not None else None
 
         h = self.embed(input_ids)
         h = h.unsqueeze(2).repeat(1, 1, cfg.hc_mult, 1)

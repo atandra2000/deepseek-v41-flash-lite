@@ -201,7 +201,8 @@ def ced_attention_forward(attn, x: torch.Tensor, start_pos: int, ced: CEDRuntime
         shared.topk_idxs = idxs
         shared.topk_ratio = ratio
 
-    # RoPE + publish the compressed KV
+    # RoPE + publish the compressed KV. Only true kv sources publish to the
+    # shared slot; the decoder's own (projected) cache is read directly.
     if latent is not None:
         rope_latent(latent, attn.freqs_cis, start_pos, seqlen, ratio)
         if start_pos == 0:
@@ -212,8 +213,9 @@ def ced_attention_forward(attn, x: torch.Tensor, start_pos: int, ced: CEDRuntime
                     x.size(0), attn.max_seq_len // ratio, attn.head_dim, dtype=latent.dtype, device=latent.device
                 )
             attn.compress_kv_cache[: x.size(0), start_pos // ratio : start_pos // ratio + latent.size(1)] = latent
-        shared.compress_kv = attn.compress_kv_cache
-        ced.published_ratio = ratio
+        if path == "own":
+            shared.compress_kv = attn.compress_kv_cache
+            ced.published_ratio = ratio
 
     if path == "project":
         # the decoder's own published cache (never the encoder's)
