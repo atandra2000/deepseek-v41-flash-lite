@@ -112,8 +112,7 @@ class Attention(nn.Module):
 
         # decode-time ring/global caches, allocated lazily on first decode
         self.window_kv_cache: torch.Tensor | None = None
-        if self.is_kv_source:
-            self.compress_kv_cache: torch.Tensor | None = None
+        self.compress_kv_cache: torch.Tensor | None = None  # kv sources + project layers only
 
         self.reset_parameters(n_layers)
 

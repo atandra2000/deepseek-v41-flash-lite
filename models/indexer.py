@@ -63,13 +63,12 @@ class Indexer(nn.Module):
             else:
                 freqs = freqs_cis[start_pos + 1 - ratio].unsqueeze(0)
             apply_rotary_emb(k[..., -2 * freqs.size(-1) :], freqs)
-            if start_pos == 0:
-                self.k_cache = k
+            if self.k_cache is None or self.k_cache.size(1) < start_pos // ratio + k.size(1):
+                # full-length buffer from the start, or decode writes no-op
+                full = torch.zeros(bsz, self.max_seq_len // ratio, self.index_head_dim, dtype=k.dtype, device=k.device)
+                full[:bsz, : k.size(1)] = k
+                self.k_cache = full
             else:
-                if self.k_cache is None:
-                    self.k_cache = torch.zeros(
-                        bsz, self.max_seq_len // ratio, self.index_head_dim, dtype=k.dtype, device=k.device
-                    )
                 self.k_cache[:bsz, start_pos // ratio : start_pos // ratio + k.size(1)] = k
             shared.index_k = self.k_cache
 

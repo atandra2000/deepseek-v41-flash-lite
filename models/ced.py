@@ -205,13 +205,15 @@ def ced_attention_forward(attn, x: torch.Tensor, start_pos: int, ced: CEDRuntime
     # shared slot; the decoder's own (projected) cache is read directly.
     if latent is not None:
         rope_latent(latent, attn.freqs_cis, start_pos, seqlen, ratio)
-        if start_pos == 0:
-            attn.compress_kv_cache = latent
+        if attn.compress_kv_cache is None or attn.compress_kv_cache.size(1) < start_pos // ratio + latent.size(1):
+            # prefill must land in the full-length buffer, or decode writes
+            # slice past the (exact-size) prefill tensor and silently no-op
+            full = torch.zeros(
+                x.size(0), attn.max_seq_len // ratio, attn.head_dim, dtype=latent.dtype, device=latent.device
+            )
+            full[: x.size(0), : latent.size(1)] = latent
+            attn.compress_kv_cache = full
         else:
-            if attn.compress_kv_cache is None:
-                attn.compress_kv_cache = torch.zeros(
-                    x.size(0), attn.max_seq_len // ratio, attn.head_dim, dtype=latent.dtype, device=latent.device
-                )
             attn.compress_kv_cache[: x.size(0), start_pos // ratio : start_pos // ratio + latent.size(1)] = latent
         if path == "own":
             shared.compress_kv = attn.compress_kv_cache

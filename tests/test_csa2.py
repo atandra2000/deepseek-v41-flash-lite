@@ -49,7 +49,7 @@ def test_indexer_topk_matches_brute_force():
     # brute force: same scores the indexer computes (q RoPE'd, k from its cache)
     from models.layers import apply_rotary_emb
 
-    k = layer.k_cache
+    k = layer.k_cache[:, :S]  # cache is full-length (Task 7); brute force uses the active region
     q = layer.wq_b(qr).unflatten(-1, (layer.n_heads, layer.index_head_dim))
     apply_rotary_emb(q[..., -2 * layer.freqs_cis.size(-1) :], layer.freqs_cis[0:S])
     weights = layer.weights_proj(x) * (layer.softmax_scale * layer.n_heads**-0.5)

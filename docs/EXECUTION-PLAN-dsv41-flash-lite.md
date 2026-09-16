@@ -115,12 +115,17 @@ committed under `tests/golden/`.
 
 **Targets:** `models/cache.py`, `scripts/gen.py`, `tests/test_generation.py`.
 
-- [ ] Cache exposes global-pool (8192) + per-layer SWA (128) with
+- [x] Cache exposes global-pool (8192) + per-layer SWA (128) with
       `global_kv_bytes()` returning measured bytes/token (BF16 and FP8 paths).
-- [ ] Greedy generation with EOS/max-token bounds; incremental decode matches
+      *(Accounting view over the live buffers — models/cache.py; real dims:
+      1920 B/token BF16, 960 FP8.)*
+- [x] Greedy generation with EOS/max-token bounds; incremental decode matches
       full-sequence forward on the same model (logit parity within BF16 tol).
+      *(Exact parity (3.6e-7) with exhaustive selection; production top-k is
+      tie-near-equal only — see tests/golden/generation-parity.md.)*
 
-**Verify:** `pytest tests/test_generation.py -q`; parity report recorded.
+**Verify:** `pytest tests/test_generation.py -q`; parity report recorded
+(`tests/golden/generation-parity.md`).
 
 ### Task 8 — ViT pathway and DSpark drafter
 
