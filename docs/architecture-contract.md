@@ -315,7 +315,7 @@ explicitly marked — they are design-doc choices, not upstream facts.**
 
 | Key | Value | Source |
 |---|---|---|
-| n_layers | 24 (enc 0–11 m=2, dec 12–23 m=1) | design §3 |
+| n_layers | 24 (layers 0–1 SWA-only, 2–11 m=2, 12–23 m=1; upstream head pattern — m=2 layers before the first producer would have no source) | design §3 + T1 note |
 | d_model | 1024 | design §3 |
 | n_heads / head_dim | 16 / 64 | design §3 |
 | q_lora_rank / o_lora_rank / o_groups | 256 / 256 / 4 | design §3 |
