@@ -71,12 +71,13 @@ def apply_rotary_emb(x: torch.Tensor, freqs_cis: torch.Tensor, inverse: bool = F
     orig_dtype = x.dtype
     x_ = x
     xc = torch.view_as_complex(x.float().unflatten(-1, (-1, 2)))
+    half = xc.size(-1)
     if inverse:
         freqs_cis = freqs_cis.conj()
     if x_.ndim == 3:
-        freqs_cis = freqs_cis.view(1, x_.size(1), x_.size(-1))
+        freqs_cis = freqs_cis.view(1, x_.size(1), half)
     else:
-        freqs_cis = freqs_cis.view(1, x_.size(1), 1, x_.size(-1))
+        freqs_cis = freqs_cis.view(1, x_.size(1), 1, half)
     out = torch.view_as_real(xc * freqs_cis).flatten(-2)
     x_.copy_(out.to(orig_dtype))
     return x_

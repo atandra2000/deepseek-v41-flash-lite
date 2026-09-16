@@ -151,7 +151,10 @@ class LiteConfig:
         ), "kv sources must be ascending and unique"
         assert self.index_source_layers == tuple(sorted(set(self.index_source_layers)))
         assert set(self.kv_source_layers) <= set(self.index_source_layers), "every kv source indexes"
-        assert self.candidate_source_layer in self.index_source_layers, "pool builder must run an indexer"
+        if self.candidate_source_layer < 0:
+            assert self.candidate_source_layer == -1, "candidate_source_layer is -1 (off) or a valid index source"
+        else:
+            assert self.candidate_source_layer in self.index_source_layers, "pool builder must run an indexer"
         assert self.pool_capacity >= self.index_topk, "pool must cover top-k"
         assert self.n_activated_experts <= self.n_routed_experts
         assert self.tie_word_embeddings, "Lite vocab is tied (D4)"
