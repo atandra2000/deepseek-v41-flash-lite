@@ -1,7 +1,8 @@
 # DS-V4.1-Flash-Lite — Execution Plan
 
 > **Status:** implementation plan for [candidate 13](../../llm-research/candidates/13-deepseek-v41-flash.md)
-> v3 and the [design specification](DESIGN-dsv41-flash-lite.md). Not started.
+> v3 and the [design specification](DESIGN-dsv41-flash-lite.md). Phase 0, 1, and 2
+> complete (Tasks 1–9 green). Phase 3 (Data & Trainer) next.
 > Sequencing: DiffusionGemma-Lite / HiLS-Attention-Lite training debt and the
 > Gemma-4-E2B decision come first (candidate §11.4).
 
@@ -131,10 +132,10 @@ committed under `tests/golden/`.
 
 **Targets:** `models/vit.py`, `models/dspark.py`, `tests/test_vision_draft.py`.
 
-- [ ] ViT 12L d512: patch 14, pixel-unshuffle 9×, 2D-RoPE, projector →
+- [x] ViT 12L d512: patch 14, pixel-unshuffle 9×, 2D-RoPE, projector →
       reserved-special image tokens; interleaved text+image forward parity
       with text-only path when no images present.
-- [ ] DSpark 2 blocks (dense, Markov 64, SWA-128, 5-position draft +
+- [x] DSpark 2 blocks (dense, Markov 64, SWA-128, 5-position draft +
       confidence verification); backbone-freeze flag asserted (backbone
       params get no grads in DSpark mode).
 
@@ -144,7 +145,7 @@ committed under `tests/golden/`.
 
 **Targets:** `scripts/profile_memory.py`.
 
-- [ ] `torch.compile` + activation checkpointing on real dims; measured
+- [x] `torch.compile` + activation checkpointing on real dims; measured
       peak memory per gpu-shard at 4K and 16K (<2 GB activations target).
 
 **Verify:** profile report committed; ledger + all tests still green.

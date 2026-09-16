@@ -116,6 +116,16 @@ class Attention(nn.Module):
 
         self.reset_parameters(n_layers)
 
+    def _apply(self, fn, recurse=True):
+        if hasattr(self, "freqs_cis") and self.freqs_cis is not None:
+            freqs = self.freqs_cis
+            self.freqs_cis = None
+            res = super()._apply(fn, recurse=recurse)
+            device = self.attn_sink.device if hasattr(self, "attn_sink") else self.wq_a.weight.device
+            self.freqs_cis = freqs.to(device)
+            return res
+        return super()._apply(fn, recurse=recurse)
+
     def reset_parameters(self, n_layers: int) -> None:
         for m in (self.wq_a, self.wq_b, self.wkv, self.wo_a):
             init_std_(m.weight)
@@ -128,7 +138,8 @@ class Attention(nn.Module):
         """This layer's sliding-window K (post-norm, post-RoPE) + window indices."""
         win = self.window_size
         kv = self.kv_norm(self.wkv(x))
-        apply_rotary_emb(kv[..., -self.rope_head_dim :], self.freqs_cis[start_pos : start_pos + kv.size(1)])
+        kv_tail = apply_rotary_emb(kv[..., -self.rope_head_dim :], self.freqs_cis[start_pos : start_pos + kv.size(1)])
+        kv = torch.cat([kv[..., : -self.rope_head_dim], kv_tail], dim=-1)
         if start_pos == 0:
             window_kv = kv
             # seed the ring for later decode steps (upstream model.py:708-716)
@@ -136,17 +147,17 @@ class Attention(nn.Module):
             if self.window_kv_cache is None:
                 self.window_kv_cache = torch.zeros(bsz, win, self.head_dim, dtype=kv.dtype, device=kv.device)
             if seqlen <= win:
-                self.window_kv_cache[:bsz, :seqlen] = kv
+                self.window_kv_cache[:bsz, :seqlen] = kv.detach()
             else:
                 cutoff = seqlen % win
-                self.window_kv_cache[:bsz, cutoff:win], self.window_kv_cache[:bsz, :cutoff] = kv[:, -win:].split(
+                self.window_kv_cache[:bsz, cutoff:win], self.window_kv_cache[:bsz, :cutoff] = kv[:, -win:].detach().split(
                     [win - cutoff, cutoff], dim=1
                 )
         else:  # decode: one token into the ring, attend the whole window
             bsz = x.size(0)
             if self.window_kv_cache is None:
                 self.window_kv_cache = torch.zeros(bsz, win, self.head_dim, dtype=kv.dtype, device=kv.device)
-            self.window_kv_cache[:bsz, start_pos % win] = kv[:, 0]
+            self.window_kv_cache[:bsz, start_pos % win] = kv[:, 0].detach()
             window_kv = self.window_kv_cache[:bsz]
         return window_kv, window_topk_idxs(win, x.size(1), start_pos)
 
@@ -156,12 +167,14 @@ class Attention(nn.Module):
         """q heads [B,S,H,D] (RoPE'd tail) and the q-Lora latent qr for the indexer."""
         qr = self.q_norm(self.wq_a(x))
         q = self.wq_b(qr).unflatten(-1, (self.n_heads, self.head_dim))
-        apply_rotary_emb(q[..., -self.rope_head_dim :], self.freqs_cis[start_pos : start_pos + x.size(1)])
+        q_tail = apply_rotary_emb(q[..., -self.rope_head_dim :], self.freqs_cis[start_pos : start_pos + x.size(1)])
+        q = torch.cat([q[..., : -self.rope_head_dim], q_tail], dim=-1)
         return q, qr
 
     def attend(self, q: torch.Tensor, kv: torch.Tensor, topk_idxs: torch.Tensor, start_pos: int, seqlen: int) -> torch.Tensor:
         o = sparse_attn(q, kv, self.attn_sink, topk_idxs, self.softmax_scale)
-        apply_rotary_emb(o[..., -self.rope_head_dim :], self.freqs_cis[start_pos : start_pos + seqlen], inverse=True)
+        o_tail = apply_rotary_emb(o[..., -self.rope_head_dim :], self.freqs_cis[start_pos : start_pos + seqlen], inverse=True)
+        o = torch.cat([o[..., : -self.rope_head_dim], o_tail], dim=-1)
         bsz = o.size(0)
         o = o.reshape(bsz, seqlen, self.n_groups, -1)
         wo_a = self.wo_a.weight.view(self.n_groups, self.o_lora_rank, -1)
@@ -178,7 +191,8 @@ class Attention(nn.Module):
             q, _ = self.q_proj(x, start_pos)
         else:
             q = self.wq_b(qr).unflatten(-1, (self.n_heads, self.head_dim))
-            apply_rotary_emb(q[..., -self.rope_head_dim :], self.freqs_cis[start_pos : start_pos + x.size(1)])
+            q_tail = apply_rotary_emb(q[..., -self.rope_head_dim :], self.freqs_cis[start_pos : start_pos + x.size(1)])
+            q = torch.cat([q[..., : -self.rope_head_dim], q_tail], dim=-1)
         window_kv, window_idxs = self._window_kv(x, start_pos)
         o = self.attend(q, window_kv, window_idxs, start_pos, x.size(1))
         return o

@@ -44,6 +44,16 @@ class Indexer(nn.Module):
         if self.owns_k:
             init_std_(self.wk.weight)
 
+    def _apply(self, fn, recurse=True):
+        if hasattr(self, "freqs_cis") and self.freqs_cis is not None:
+            freqs = self.freqs_cis
+            self.freqs_cis = None
+            res = super()._apply(fn, recurse=recurse)
+            device = self.wq_b.weight.device
+            self.freqs_cis = freqs.to(device)
+            return res
+        return super()._apply(fn, recurse=recurse)
+
     def forward(self, x, qr, latent, start_pos, offset, compress_len, shared):
         """x [B,S,d]; qr [B,S,q_lora]; latent pre-RoPE [B,T,head_dim] (owners)
         or None; freqs_cis: the owning attention's rotary table (compress theta
@@ -62,7 +72,9 @@ class Indexer(nn.Module):
                 freqs = freqs_cis[: seqlen - seqlen % ratio : ratio]
             else:
                 freqs = freqs_cis[start_pos + 1 - ratio].unsqueeze(0)
-            apply_rotary_emb(k[..., -2 * freqs.size(-1) :], freqs)
+            rd = 2 * freqs.size(-1)
+            k_tail = apply_rotary_emb(k[..., -rd:], freqs)
+            k = torch.cat([k[..., :-rd], k_tail], dim=-1)
             if self.k_cache is None or self.k_cache.size(1) < start_pos // ratio + k.size(1):
                 # full-length buffer from the start, or decode writes no-op
                 full = torch.zeros(bsz, self.max_seq_len // ratio, self.index_head_dim, dtype=k.dtype, device=k.device)
@@ -73,7 +85,9 @@ class Indexer(nn.Module):
             shared.index_k = self.k_cache
 
         q = self.wq_b(qr).unflatten(-1, (self.n_heads, self.index_head_dim))
-        apply_rotary_emb(q[..., -2 * freqs_cis.size(-1) :], freqs_cis[start_pos:end_pos])
+        rd = 2 * freqs_cis.size(-1)
+        q_tail = apply_rotary_emb(q[..., -rd:], freqs_cis[start_pos:end_pos])
+        q = torch.cat([q[..., :-rd], q_tail], dim=-1)
 
         assert shared.index_k is not None, "no index keys published yet"
         index_k = shared.index_k[:bsz, : end_pos // ratio]

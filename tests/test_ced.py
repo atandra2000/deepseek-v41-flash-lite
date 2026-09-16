@@ -46,7 +46,7 @@ def test_rope_latent_positions():
     freqs = torch.polar(torch.ones(8, 2), torch.outer(torch.arange(8.0), torch.ones(2)))
     lat = torch.randn(1, 3, 4)  # head_dim 4, rope tail 4 (freqs last dim 2)
     base = lat.clone()
-    rope_latent(lat, freqs, start_pos=0, seqlen=6, ratio=2)
+    lat = rope_latent(lat, freqs, start_pos=0, seqlen=6, ratio=2)
     # manual: rows use freqs[0], freqs[2], freqs[4]
     import torch as t
 

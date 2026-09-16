@@ -45,11 +45,13 @@ def oracle_indexer(layer, x, qr, latent, start_pos, offset, shared):
         else:
             freqs = freqs_cis[start_pos + 1 - ratio].unsqueeze(0)
         k = layer.k_norm(layer.wk(latent))
-        apply_rotary_emb(k[..., -rd:], freqs)
+        k_tail = apply_rotary_emb(k[..., -rd:], freqs)
+        k = torch.cat([k[..., :-rd], k_tail], dim=-1)
         shared.index_k = k  # oracle: no fp4 quantization, direct publish
 
     q = layer.wq_b(qr).unflatten(-1, (layer.n_heads, layer.index_head_dim))
-    apply_rotary_emb(q[..., -rd:], freqs_cis[start_pos:end_pos])
+    q_tail = apply_rotary_emb(q[..., -rd:], freqs_cis[start_pos:end_pos])
+    q = torch.cat([q[..., :-rd], q_tail], dim=-1)
 
     index_k = shared.index_k[:bsz, : end_pos // ratio]
     weights = layer.weights_proj(x) * (layer.softmax_scale * layer.n_heads**-0.5)

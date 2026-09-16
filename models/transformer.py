@@ -8,6 +8,7 @@ Phase 2. Producer hidden states are stashed for the decoder CED projection.
 import torch
 import torch.nn.functional as F
 from torch import nn
+from torch.utils.checkpoint import checkpoint
 
 from .attention import Attention, SharedAttentionRuntime
 from .ced import CEDRuntime, CedProjection, Compressor, ced_attention_forward
@@ -171,11 +172,12 @@ class Transformer(nn.Module):
         return self.dspark[-1].forward_head(h, pre_mix, input_ids, self, temperature)
 
     def forward(self, input_ids, start_pos: int = 0, ngram_hashes=None, engram_mask=None, image_mask=None,
-                images=None):
+                images=None, checkpoint_activations: bool = False):
         """Full forward (prefill and single-token decode). Returns (logits fp32
         [B,S,vocab], main_hiddens list-or-None). images: per-sample lists of
         vit.ImageSpan — spans must lie inside the first (start_pos 0) chunk;
-        image_mask marks every span position (engram skip + MoE bias_vl)."""
+        image_mask marks every span position (engram skip + MoE bias_vl).
+        checkpoint_activations: uses torch.utils.checkpoint on each block."""
         cfg = self.cfg
         bsz, seqlen = input_ids.shape
         shared = self.shared_attn
@@ -198,7 +200,15 @@ class Transformer(nn.Module):
                 # (contract T6, upstream model.py:1264-1266), i.e. the stream
                 # entering the block
                 main_hiddens.append(h.mean(dim=2))
-            h, pre_mix = blk(h, start_pos, pre_mix, ced, ngram_hashes, engram_mask, image_mask)
+            if checkpoint_activations and self.training and start_pos == 0:
+                def make_custom_forward(b):
+                    def custom_forward(x_in, p_mix):
+                        return b(x_in, start_pos, p_mix, ced, hashes, engram_mask, image_mask)
+                    return custom_forward
+
+                h, pre_mix = checkpoint(make_custom_forward(blk), h, pre_mix, use_reentrant=False)
+            else:
+                h, pre_mix = blk(h, start_pos, pre_mix, ced, hashes, engram_mask, image_mask)
             if blk.layer_id in cfg.kv_source_layers:
                 # producers publish their OUTPUT hidden state (collapsed to one
                 # stream) for the decoder CED projection (design §4.1)

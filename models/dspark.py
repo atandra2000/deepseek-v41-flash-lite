@@ -57,16 +57,17 @@ class DSparkAttention(Attention):
         bsz, main_len, _ = main_x.size()
 
         main_kv = self.kv_norm(self.wkv(main_x))
-        apply_rotary_emb(main_kv[..., -rd:], self.freqs_cis[start_pos : start_pos + main_len])
+        main_kv_tail = apply_rotary_emb(main_kv[..., -rd:], self.freqs_cis[start_pos : start_pos + main_len])
+        main_kv = torch.cat([main_kv[..., :-rd], main_kv_tail], dim=-1)
 
         if start_pos == 0:
             if self.window_kv_cache is None:
                 self.window_kv_cache = torch.zeros(bsz, win, self.head_dim, dtype=main_kv.dtype, device=main_kv.device)
             if main_len <= win:
-                self.window_kv_cache[:bsz, :main_len] = main_kv
+                self.window_kv_cache[:bsz, :main_len] = main_kv.detach()
             else:
                 cutoff = main_len % win
-                self.window_kv_cache[:bsz, cutoff:win], self.window_kv_cache[:bsz, :cutoff] = main_kv[:, -win:].split(
+                self.window_kv_cache[:bsz, cutoff:win], self.window_kv_cache[:bsz, :cutoff] = main_kv[:, -win:].detach().split(
                     [win - cutoff, cutoff], dim=1
                 )
             return x  # prefill only seeds the ring (upstream model.py:1122-1126)
@@ -77,10 +78,13 @@ class DSparkAttention(Attention):
 
         q, _ = self.q_proj(x, start_pos + main_len)
         kv = self.kv_norm(self.wkv(x))
-        apply_rotary_emb(kv[..., -rd:], draft_freqs)
+        kv_tail = apply_rotary_emb(kv[..., -rd:], draft_freqs)
+        kv = torch.cat([kv[..., :-rd], kv_tail], dim=-1)
 
-        self.window_kv_cache[:bsz, start_pos % win] = main_kv[:, -1]
-        kv_cat = torch.cat([self.window_kv_cache[:bsz], kv], dim=1)
+        self.window_kv_cache[:bsz, start_pos % win] = main_kv[:, -1].detach()
+        ring_state = self.window_kv_cache[:bsz].clone()
+        ring_state[:, start_pos % win] = main_kv[:, -1]
+        kv_cat = torch.cat([ring_state, kv], dim=1)
         topk_idxs = get_dspark_topk_idxs(win, bsz, block_size, start_pos)
         return self.attend(q, kv_cat, topk_idxs, start_pos + main_len, block_size)
 

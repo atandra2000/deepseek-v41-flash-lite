@@ -116,14 +116,15 @@ class ProducerMap:
 def rope_latent(latent: torch.Tensor, freqs_cis: torch.Tensor, start_pos: int, seqlen: int,
                 ratio: int) -> torch.Tensor:
     """RoPE the latent tail at group-first positions j*ratio (upstream
-    model.py:751-761). In-place on the tail; returns the tensor."""
+    model.py:751-761). Returns the RoPE'd latent tensor."""
     if start_pos == 0:
         freqs = freqs_cis[: seqlen - seqlen % ratio : ratio]
     else:
         freqs = freqs_cis[start_pos + 1 - ratio].unsqueeze(0)
-    tail = latent[..., -2 * freqs.size(-1) :]
-    apply_rotary_emb(tail, freqs)
-    return latent
+    rd = 2 * freqs.size(-1)
+    head, tail = latent[..., :-rd], latent[..., -rd:]
+    tail_roped = apply_rotary_emb(tail, freqs)
+    return torch.cat([head, tail_roped], dim=-1)
 
 
 class CEDRuntime:
@@ -204,7 +205,7 @@ def ced_attention_forward(attn, x: torch.Tensor, start_pos: int, ced: CEDRuntime
     # RoPE + publish the compressed KV. Only true kv sources publish to the
     # shared slot; the decoder's own (projected) cache is read directly.
     if latent is not None:
-        rope_latent(latent, attn.freqs_cis, start_pos, seqlen, ratio)
+        latent = rope_latent(latent, attn.freqs_cis, start_pos, seqlen, ratio)
         if attn.compress_kv_cache is None or attn.compress_kv_cache.size(1) < start_pos // ratio + latent.size(1):
             # prefill must land in the full-length buffer, or decode writes
             # slice past the (exact-size) prefill tensor and silently no-op

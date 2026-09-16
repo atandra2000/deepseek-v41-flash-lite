@@ -51,7 +51,9 @@ def test_indexer_topk_matches_brute_force():
 
     k = layer.k_cache[:, :S]  # cache is full-length (Task 7); brute force uses the active region
     q = layer.wq_b(qr).unflatten(-1, (layer.n_heads, layer.index_head_dim))
-    apply_rotary_emb(q[..., -2 * layer.freqs_cis.size(-1) :], layer.freqs_cis[0:S])
+    rd = 2 * layer.freqs_cis.size(-1)
+    q_tail = apply_rotary_emb(q[..., -rd:], layer.freqs_cis[0:S])
+    q = torch.cat([q[..., :-rd], q_tail], dim=-1)
     weights = layer.weights_proj(x) * (layer.softmax_scale * layer.n_heads**-0.5)
     scores = (torch.einsum("bshd,btd->bsht", q, k).relu_() * weights.unsqueeze(-1)).sum(2)
     lens = (torch.arange(1, S + 1) // 1).unsqueeze(-1)
