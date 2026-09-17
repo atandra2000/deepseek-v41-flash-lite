@@ -226,6 +226,15 @@ bitwise identical on the first A100 session — pending (Task 12).
       numeric result recorded to `runs/ladder.jsonl`; fallbacks applied
       strictly in the pre-approved order on failure.
 
+  **CPU-side runbook shipped (this commit):** `training/runbook.py` wires the
+  whole A100 session — env pinning (`runbook pin`), 512-probe pinning from a
+  val split, the 200-step bitwise-repeat driver with the pin recorded in its
+  evidence, and the C0–C6 ladder through the canonical GateRunner/LadderRunner
+  with approvals-drift abort. All of it is CPU-tested (`tests/test_runbook.py`,
+  6 tests) on fixture data; `--fixture` waives corpus size only. The GPU
+  execution itself — bring-up, the bitwise repeat on CUDA, measured gates at
+  production dims — remains pending and is documented in `training/README.md`.
+
 **Verify:** `runs/ladder.jsonl` shows a pass (or pre-approved fallback) for
 every stage C0–C6; total hours logged.
 
@@ -234,6 +243,13 @@ every stage C0–C6; total hours logged.
 - [ ] C8: 20–24B tokens, stage 1 (4K, ~70%) → stage 2 (16K, ≥30% long docs);
       resume-on-interrupt; abort criteria live in the runner (60% budget,
       loss >1.1× EMA over 500 steps).
+
+  **CPU-side wiring shipped (this commit):** the C8 run uses the same
+  `training/pretrain.py` CLI as development (manifest-bound PackedDataset,
+  explicit batch/accumulation, `--fixture` never waives integrity); the
+  runbook's `pin`/`pin-probes`/`ladder` cover everything the rented session
+  needs beyond raw training. Stage-2 long-doc recall probes and the FP8-KV
+  QAT / DSpark / SFT+GRPO post-training stages remain pending hardware work.
 - [ ] Q1 FP8-KV QAT gate + 500-step finetune (BF16 artifact ships on fail).
 - [ ] P2 DSpark (frozen backbone), P3 SFT + effort-conditioned GRPO groups.
 

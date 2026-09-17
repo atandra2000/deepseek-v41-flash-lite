@@ -40,12 +40,35 @@ the existing per-block shared-CED replay is not used. This is correctness-tested
 not a claim that the original per-block memory target is met. CUDA BF16,
 `torch.compile`, multi-GPU operation, and production memory are not validated.
 
+- `runbook.py` — CPU-tested CLI wiring for the A100 session (Tasks 12/13):
+  `pin` records the determinism environment (CUBLAS workspace, deterministic
+  algorithms, TF32 off) and refuses to run unpinned; `pin-probes` pins the
+  exactly-512 sha-pinned probe batches from a corpus val split; `repeat` runs
+  the 200-step bitwise-repeat driver and records the pin it ran under;
+  `ladder` executes C0–C6 through the canonical GateRunner + LadderRunner with
+  re-derived approvals (drift from the recorded approvals aborts before GPU
+  hours are spent). Fixture mode (`--fixture`) waives corpus size only, never
+  integrity. The GPU execution itself is Task 12; nothing here claims it.
+
 Local checks (no downloads):
 
 ```bash
-env -u PYTHONPATH .venv/bin/python -m pytest tests/test_training.py tests/test_ladder.py -q
+env -u PYTHONPATH .venv/bin/python -m pytest tests/test_training.py tests/test_ladder.py tests/test_runbook.py -q
 env -u PYTHONPATH .venv/bin/python -m training.pretrain --help
+env -u PYTHONPATH .venv/bin/python -m training.runbook --help
 ```
+
+A100 session order (pending, Task 12; every step logged to runs/):
+
+1. `runbook pin --out runs/env.json` (both repeat sessions must match it)
+2. `runbook pin-probes --data <corpus> --out runs/probes.json` (stage context)
+3. `runbook repeat --data <corpus> --model-config configs/lite-v3.json
+   --training-config <json> --checkpoint-dir runs/repeat-a --out runs/repeat-a.json
+   --env runs/env.json --device cuda` — twice, compare `loss_sha256`
+4. `runbook ladder --data <corpus> --probes runs/probes.json
+   --approvals runs/approvals.json --output runs/ladder.jsonl --device cuda
+   --batch-size <explicit> --accumulation-steps <explicit>` (batch/accum
+   sizes are decided at run time from stage-2 packing; not guessed here)
 
 For an offline corpus, the module CLI requires model JSON, TrainingConfig JSON,
 manifest directory, and checkpoint directory; `--fixture` waives corpus-size
