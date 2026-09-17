@@ -1,0 +1,96 @@
+{
+  "source_revision": "099c72954c82857c83c0c75d1d2abbb3127919b0",
+  "configuration": "configs/lite-v3.json + training/pretrain.py:TrainingConfig",
+  "diagrams": [
+    {
+      "html": "architecture-csa2.html",
+      "specification": "architecture-csa2.json",
+      "type": "architecture",
+      "specification_sha256": "8600d763b39c97d87620bef7db4fa437e9aa599ed65dc61713857cd9d4ffa983",
+      "artifact_sha256": "24ce765b8b45d615dd6f092ae45b90b26c246c73f6a96da591b87d9ee8c4c823",
+      "validation": {
+        "checksPassed": 9,
+        "checkCount": 9,
+        "compositionProfile": "showcase",
+        "compositionStatus": "pass",
+        "errors": 0,
+        "warnings": 0
+      },
+      "browser_evidence": "passed",
+      "minimum_node_px_1440": 6.345652173913043,
+      "visual_review": "skipped (image input unavailable)"
+    },
+    {
+      "html": "dataflow-data-pipeline.html",
+      "specification": "dataflow-data-pipeline.json",
+      "type": "dataflow",
+      "specification_sha256": "a512e320fd473aa52529c0bdae9243dfd145b1e41cf3f6579c97094d77cb6797",
+      "artifact_sha256": "15429e2fb420c4382be002320d872c1cbee3ddc76f977a47c531c0d3dda2812c",
+      "validation": {
+        "checksPassed": 9,
+        "checkCount": 9,
+        "compositionProfile": "showcase",
+        "compositionStatus": "pass",
+        "errors": 0,
+        "warnings": 0
+      },
+      "browser_evidence": "passed",
+      "minimum_node_px_1440": 6.928703703703704,
+      "visual_review": "skipped (image input unavailable)"
+    },
+    {
+      "html": "architecture-model.html",
+      "specification": "model.architecture.json",
+      "type": "architecture",
+      "specification_sha256": "d33fc1f90ac88dc16e6a658cbacf3a5d2ca1e70a5bf5f97d2cd72ae390493cc4",
+      "artifact_sha256": "9b2696d16b8f5abaf6fbded5cf8726a9eafe9d5d283dec78564b0c956dd41a6a",
+      "validation": {
+        "checksPassed": 9,
+        "checkCount": 9,
+        "compositionProfile": "showcase",
+        "compositionStatus": "pass",
+        "errors": 0,
+        "warnings": 0
+      },
+      "browser_evidence": "passed",
+      "minimum_node_px_1440": 7.005,
+      "visual_review": "skipped (image input unavailable)"
+    },
+    {
+      "html": "workflow-training-loop.html",
+      "specification": "workflow-training-loop.json",
+      "type": "workflow",
+      "specification_sha256": "6fc982b9d0b783862852f2c5d9b61f2671974da3708d215ae6f6fc790d175aef",
+      "artifact_sha256": "cde3db8dd4629212896a1b45b37bbbee2ef664e307c0f67b78752f8a13b835c3",
+      "validation": {
+        "checksPassed": 9,
+        "checkCount": 9,
+        "compositionProfile": "showcase",
+        "compositionStatus": "pass",
+        "errors": 0,
+        "warnings": 0
+      },
+      "browser_evidence": "passed",
+      "minimum_node_px_1440": 7.0742481203007515,
+      "visual_review": "skipped (image input unavailable)"
+    }
+  ],
+  "guide_static": {
+    "guide": "deepseek-v41-flash-lite/docs/diagrams/deepseek_v41_visual_guide.html",
+    "links": 19,
+    "navigation": [
+      "#overview",
+      "#model",
+      "#data",
+      "#training",
+      "#distinctive",
+      "#evidence"
+    ],
+    "source_symbols": 7,
+    "errors": []
+  },
+  "perceptual_review": "skipped (image input unavailable)",
+  "premium_11_12px_target": "not met",
+  "doc_import_gate": "no import-based gate present",
+  "model_code_changes": false
+}

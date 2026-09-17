@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "dataflow",
   "meta": {
-    "title": "Data Pipeline | Offline and Manifest-Verified",
+    "title": "DS-V4.1-Flash-Lite · Data",
     "locale": "en",
     "animation": "none",
     "quality_profile": "showcase",
@@ -85,7 +85,7 @@
       "id": "prepare",
       "type": "backend",
       "label": "prepare()",
-      "sublabel": "encode \u00b7 EOS \u00b7 dedup",
+      "sublabel": "EOS · reject duplicates",
       "stage": 1,
       "row": 1,
       "width": 156,
@@ -115,7 +115,7 @@
       "id": "packed",
       "type": "backend",
       "label": "PackedDataset",
-      "sublabel": "mmap \u00b7 ordered packing",
+      "sublabel": "mmap · ordered packing",
       "stage": 4,
       "row": 1,
       "width": 156,
@@ -179,29 +179,30 @@
   "cards": [
     {
       "dot": "cyan",
-      "title": "Preparation | prepare_data.py",
+      "title": "Preparation and provenance",
       "items": [
-        "Local source path, revision and SHA-256 checked. No downloads or cleaning.",
-        "Content-hash order; val split uses hash mod 11 = 0, not an exact 90/10 quota.",
-        "Manifest written last; normalized float32 image patches stored separately."
+        "Local inputs only; duplicate identity/content aborts prep.",
+        "Hash-based split/order; manifest written last.",
+        "Configured: configs/lite-v3.json",
+        "Revision: 099c72954c82857c83c0c75d1d2abbb3127919b0"
       ]
     },
     {
       "dot": "emerald",
-      "title": "Packing | dataset.py",
+      "title": "Packing, not zero-copy batching",
       "items": [
-        "SQLite document index; mmap uint16 \u2192 int64 inputs and shifted labels.",
-        "Boundary/image/padding targets: -100. Images never split.",
-        "Resume binds manifest/config and exact position. No workers or automatic repeat."
+        "uint16 mmap → allocated int64 inputs / shifted labels.",
+        "Whole images; boundary/image/padding targets = -100.",
+        "Manifest-bound position; no workers or automatic repeat."
       ]
     },
     {
       "dot": "amber",
-      "title": "Production is still pending",
+      "title": "Production gates, not corpus inventory",
       "items": [
-        "Production preflight requires 20B train text, 2B val text and 2B train image-text tokens.",
-        "Stage 2 selects text only and requires \u226530% long documents at the configured context.",
-        "Fixture mode waives corpus budgets only. Real corpus and full tokenizer availability remain unverified."
+        "20B train text / 2B val text / 2B train image-text required.",
+        "Stage 2: text only; ≥30% long documents required.",
+        "Fixture mode waives budgets only. See data/prepare_data.py:prepare."
       ]
     }
   ]

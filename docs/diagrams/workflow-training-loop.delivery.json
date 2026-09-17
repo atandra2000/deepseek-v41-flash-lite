@@ -6,12 +6,12 @@
   "input": "/Users/atandrabharati/Desktop/CoreProjects/LLM/deepseek-v41-flash-lite/docs/diagrams/workflow-training-loop.json",
   "output": "/Users/atandrabharati/Desktop/CoreProjects/LLM/deepseek-v41-flash-lite/docs/diagrams/workflow-training-loop.html",
   "specification": {
-    "sha256": "9f01d0e8227756c7a2a7dd79894f7ce148c34786ca2393b14e7d280ea7149b2b",
-    "bytes": 5188
+    "sha256": "6fc982b9d0b783862852f2c5d9b61f2671974da3708d215ae6f6fc790d175aef",
+    "bytes": 5470
   },
   "artifact": {
-    "sha256": "c25c480629b48ec3f85354b9b3bf94f535ed56013e0eb67919de133f1aab53a0",
-    "bytes": 711775
+    "sha256": "cde3db8dd4629212896a1b45b37bbbee2ef664e307c0f67b78752f8a13b835c3",
+    "bytes": 713255
   },
   "validation": {
     "checksPassed": 9,

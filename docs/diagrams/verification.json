@@ -6,12 +6,12 @@
       "passed": true,
       "exit_code": 0,
       "specification": {
-        "sha256": "50109595655aab09784b37dbce0a07dadecaf371c7a5734834d4806a983952c8",
-        "bytes": 4113
+        "sha256": "d33fc1f90ac88dc16e6a658cbacf3a5d2ca1e70a5bf5f97d2cd72ae390493cc4",
+        "bytes": 4140
       },
       "artifact": {
-        "sha256": "bc0c9171006fc5771068f5441405016c27e926c4b2d37b8f9194999fe426618d",
-        "bytes": 710270
+        "sha256": "9b2696d16b8f5abaf6fbded5cf8726a9eafe9d5d283dec78564b0c956dd41a6a",
+        "bytes": 710348
       },
       "browser_receipt": "architecture-model.visual-check.json",
       "diagnostics": [],
@@ -22,12 +22,12 @@
       "passed": true,
       "exit_code": 0,
       "specification": {
-        "sha256": "57c3e2dcdfea2ab5b232d2439bb33c485051b8952b9ca95ffa10b4da404e607c",
-        "bytes": 4129
+        "sha256": "8600d763b39c97d87620bef7db4fa437e9aa599ed65dc61713857cd9d4ffa983",
+        "bytes": 4974
       },
       "artifact": {
-        "sha256": "7fcfab69ebf552057bd1277cda70b1c27ffc40fb3af73e022271353c944e3658",
-        "bytes": 711196
+        "sha256": "24ce765b8b45d615dd6f092ae45b90b26c246c73f6a96da591b87d9ee8c4c823",
+        "bytes": 714244
       },
       "browser_receipt": "architecture-csa2.visual-check.json",
       "diagnostics": [],
@@ -38,12 +38,12 @@
       "passed": true,
       "exit_code": 0,
       "specification": {
-        "sha256": "9f01d0e8227756c7a2a7dd79894f7ce148c34786ca2393b14e7d280ea7149b2b",
-        "bytes": 5188
+        "sha256": "6fc982b9d0b783862852f2c5d9b61f2671974da3708d215ae6f6fc790d175aef",
+        "bytes": 5470
       },
       "artifact": {
-        "sha256": "c25c480629b48ec3f85354b9b3bf94f535ed56013e0eb67919de133f1aab53a0",
-        "bytes": 711775
+        "sha256": "cde3db8dd4629212896a1b45b37bbbee2ef664e307c0f67b78752f8a13b835c3",
+        "bytes": 713255
       },
       "browser_receipt": "workflow-training-loop.visual-check.json",
       "diagnostics": [],
@@ -54,12 +54,12 @@
       "passed": true,
       "exit_code": 0,
       "specification": {
-        "sha256": "c17d878535fa66e4f5618f338a0fc8a9f72c6d81715198b67666d8a07ccb7f1a",
-        "bytes": 4919
+        "sha256": "a512e320fd473aa52529c0bdae9243dfd145b1e41cf3f6579c97094d77cb6797",
+        "bytes": 4731
       },
       "artifact": {
-        "sha256": "6292c73a476cce68eea7b218fcd427381edb8725b1590749293308b38a69ae12",
-        "bytes": 710562
+        "sha256": "15429e2fb420c4382be002320d872c1cbee3ddc76f977a47c531c0d3dda2812c",
+        "bytes": 710375
       },
       "browser_receipt": "dataflow-data-pipeline.visual-check.json",
       "diagnostics": [],

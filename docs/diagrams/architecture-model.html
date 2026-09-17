@@ -5373,8 +5373,8 @@
           <h3>Inside each block</h3>
         </div>
         <ul>
-          <li>&bull; SWA-128 plus CED / CSA2 global attention</li>
-          <li>&bull; MoE: 16 routed experts, top-2, plus 1 shared</li>
+          <li>&bull; SWA-128 in all blocks; L0–1 have no global path</li>
+          <li>&bull; L2–23 add global KV; MoE: top-2 of 16 + shared</li>
         </ul>
       </div>
 
@@ -5395,8 +5395,9 @@
           <h3>Implementation, not a training claim</h3>
         </div>
         <ul>
-          <li>&bull; Source: models/transformer.py + lite-v3.json</li>
-          <li>&bull; Full-size GPU results are not asserted here</li>
+          <li>&bull; Configured: configs/lite-v3.json</li>
+          <li>&bull; Revision: 099c72954c82857c83c0c75d1d2abbb3127919b0</li>
+          <li>&bull; Transformer.forward; no GPU result claimed.</li>
         </ul>
       </div>
     </div>

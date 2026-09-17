@@ -2,12 +2,12 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "CED + CSA2 \u00b7 Decoder attention",
+    "title": "CED + CSA2 · Decoder attention",
     "quality_profile": "showcase",
     "locale": "en",
     "viewBox": [
       1380,
-      740
+      820
     ]
   },
   "components": [
@@ -18,7 +18,7 @@
       "sublabel": "Producer hidden state",
       "pos": [
         40,
-        350
+        470
       ],
       "size": [
         200,
@@ -29,10 +29,10 @@
       "id": "decoder-project",
       "type": "backend",
       "label": "Per-decoder projection",
-      "sublabel": "WZ \u2192 WKV \u2192 norm \u00b7 m=1",
+      "sublabel": "WZ → WKV → norm · m=1",
       "pos": [
         370,
-        350
+        470
       ],
       "size": [
         220,
@@ -46,7 +46,7 @@
       "sublabel": "RoPE after indexer read",
       "pos": [
         740,
-        350
+        470
       ],
       "size": [
         220,
@@ -57,10 +57,10 @@
       "id": "joint-attention",
       "type": "backend",
       "label": "Joint sparse attention",
-      "sublabel": "[window, global] \u00b7 sink logit",
+      "sublabel": "[window, global] · sink logit",
       "pos": [
         1110,
-        350
+        470
       ],
       "size": [
         240,
@@ -71,10 +71,10 @@
       "id": "index-keys",
       "type": "backend",
       "label": "L12 index keys",
-      "sublabel": "Pre-RoPE latent \u2192 key cache",
+      "sublabel": "Pre-RoPE latent → key cache",
       "pos": [
         370,
-        90
+        260
       ],
       "size": [
         220,
@@ -85,10 +85,10 @@
       "id": "candidate-pool",
       "type": "backend",
       "label": "L12 candidate pool",
-      "sublabel": "1,024 blocks \u00d7 8 positions",
+      "sublabel": "1,024 blocks × 8 positions",
       "pos": [
         740,
-        90
+        260
       ],
       "size": [
         220,
@@ -98,11 +98,11 @@
     {
       "id": "selected-indices",
       "type": "messagebus",
-      "label": "Top-256 indices",
-      "sublabel": "L16 / L20 reindex \u00b7 rest reuse",
+      "label": "Published top-256",
+      "sublabel": "L12 / L16 / L20; others reuse",
       "pos": [
         1110,
-        90
+        260
       ],
       "size": [
         240,
@@ -116,7 +116,21 @@
       "sublabel": "128-token sliding window",
       "pos": [
         1110,
-        580
+        670
+      ],
+      "size": [
+        240,
+        76
+      ]
+    },
+    {
+      "id": "l12-selection",
+      "type": "backend",
+      "label": "L12 reachable top-256",
+      "sublabel": "Not masked to its own pool",
+      "pos": [
+        1110,
+        60
       ],
       "size": [
         240,
@@ -162,23 +176,37 @@
       "id": "select-within-pool",
       "from": "candidate-pool",
       "to": "selected-indices",
-      "label": "mask later scores"
+      "label": "L16 / L20 mask"
     },
     {
       "id": "gather-positions",
       "from": "selected-indices",
       "to": "joint-attention",
       "label": "gather indices",
-      "labelAt": [
-        1230,
-        180
-      ]
+      "labelDy": 24
     },
     {
       "id": "read-window",
       "from": "local-window",
       "to": "joint-attention",
       "label": "local KV"
+    },
+    {
+      "id": "l12-unmasked",
+      "from": "index-keys",
+      "to": "l12-selection",
+      "label": "reachable scores",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "id": "publish-l12",
+      "from": "l12-selection",
+      "to": "selected-indices",
+      "label": "L12 selection",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
     }
   ],
   "cards": [
@@ -186,18 +214,27 @@
       "dot": "cyan",
       "title": "Lite ownership",
       "items": [
-        "L0\u20131 are SWA-only. L2 / L8 publish m=2 KV.",
-        "L3\u20137 / L9\u201311 reuse same-ratio producer caches.",
-        "L12\u201323 each project from L8 hidden, not its cache."
+        "L0–1 are SWA-only. L2 / L8 publish m=2 KV.",
+        "L3–7 / L9–11 reuse same-ratio producer caches.",
+        "L12–23 each project from L8 hidden, not its cache."
       ]
     },
     {
       "dot": "emerald",
       "title": "Selection is not cache eviction",
       "items": [
-        "Newest reachable candidate block is always kept.",
-        "L16 / L20 score L12 keys using their own queries.",
-        "Full-length KV buffers remain allocated in this implementation."
+        "L12 top-k uses all reachable scores, not its pool.",
+        "L16 / L20 mask scores to that pool; full KV buffers remain.",
+        "Newest reachable candidate block is kept."
+      ]
+    },
+    {
+      "dot": "slate",
+      "title": "Configuration and source",
+      "items": [
+        "Configured: configs/lite-v3.json",
+        "Revision: 099c72954c82857c83c0c75d1d2abbb3127919b0",
+        "models/indexer.py:Indexer.forward; models/ced.py:ced_attention_forward"
       ]
     }
   ]

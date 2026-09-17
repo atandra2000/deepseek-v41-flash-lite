@@ -1,42 +1,60 @@
-# Diagram receipts
+# Archify quality-review delivery evidence
 
-Generated 2026-09-17 with Archify (~/.agents/skills/archify, `doctor` clean). Each JSON specification is the editable source of its HTML. Deliveries atomically froze these exact specification bytes, and `visual-check` then captured automated-browser evidence from the delivered HTML. Run `python3 docs/diagrams/verify.py` to reconfirm all four bindings without rerendering; it writes `verification.json`.
+Refreshed 2026-09-17. Scope: only deepseek-v41-flash-lite's diagrams and guide. No model, training or data implementation changed. [Guide](deepseek_v41_visual_guide.html).
 
-| Artifact | Type | Specification source | Spec SHA-256 | HTML SHA-256 | Checks | Automated browser |
-|---|---|---|---|---|---|---|
-| architecture-model.html | architecture | model.architecture.json | 50109595655aab09784b37dbce0a07dadecaf371c7a5734834d4806a983952c8 | bc0c9171006fc5771068f5441405016c27e926c4b2d37b8f9194999fe426618d | 9/9 showcase, 0 errors, 0 warnings | pass (receipt JSON + 4 PNG sidecars) |
-| architecture-csa2.html | architecture | architecture-csa2.json | 57c3e2dcdfea2ab5b232d2439bb33c485051b8952b9ca95ffa10b4da404e607c | 7fcfab69ebf552057bd1277cda70b1c27ffc40fb3af73e022271353c944e3658 | 9/9 showcase, 0 errors, 0 warnings | pass (receipt JSON + 4 PNG sidecars) |
-| workflow-training-loop.html | workflow | workflow-training-loop.json | 9f01d0e8227756c7a2a7dd79894f7ce148c34786ca2393b14e7d280ea7149b2b | c25c480629b48ec3f85354b9b3bf94f535ed56013e0eb67919de133f1aab53a0 | 9/9 showcase, 0 errors, 0 warnings | pass (receipt JSON + 4 PNG sidecars) |
-| dataflow-data-pipeline.html | dataflow | dataflow-data-pipeline.json | c17d878535fa66e4f5618f338a0fc8a9f72c6d81715198b67666d8a07ccb7f1a | 6292c73a476cce68eea7b218fcd427381edb8725b1590749293308b38a69ae12 | 9/9 showcase, 0 errors, 0 warnings | pass (receipt JSON + 4 PNG sidecars) |
+## Acceptance status
+
+- **4/4 diagrams delivered, each 9/9 showcase checks, zero composition errors or warnings.**
+- **Fresh automated browser evidence passed for all 4 exact delivered hashes.** Light-theme measurements cover 1440×900, 1600×1000, 1920×1080 and 2048×1320. Light/dark endpoint screenshots accompany each receipt. This does not establish intermediate dark-theme geometry.
+- **Perceptual review: skipped (image input unavailable).** An image read was attempted, but the provider rejected image input. Automated receipts correctly retain `visualReview: pending`. Earlier visual approval does not certify these regenerated artifacts.
+- **The proposed 12px essential / 11px secondary target is not met.** The measured minimum contextual text below is smaller. Containment and the Archify 6px gate are not premium readability certification.
+- Browser interaction/mobile guide review could not run through the bridge (broken-pipe failure). Guide local links, navigation anchors, unique IDs and source symbols passed static checks. Focus/search/reset, representative export and narrow-screen guide behavior remain unverified for this revision.
+
+## Source and configuration pin
+
+Source revision: `099c72954c82857c83c0c75d1d2abbb3127919b0`. Configuration: `configs/lite-v3.json + training/pretrain.py:TrainingConfig`. These pins identify reviewed model code, not the later documentation commit. Configured dimensions, calculated sizes and target corpus/training budgets are not fresh GPU measurements. No corpus inventory, full training run or GPU benchmark was performed.
+
+## Exact artifact bindings
+
+| HTML | Type | Specification | Spec SHA-256 | HTML SHA-256 | Min node px at 1440×900 | Browser |
+|---|---|---|---|---|---:|---|
+| [architecture-csa2.html](architecture-csa2.html) | architecture | [architecture-csa2.json](architecture-csa2.json) | `8600d763b39c97d87620bef7db4fa437e9aa599ed65dc61713857cd9d4ffa983` | `24ce765b8b45d615dd6f092ae45b90b26c246c73f6a96da591b87d9ee8c4c823` | 6.35 | pass |
+| [dataflow-data-pipeline.html](dataflow-data-pipeline.html) | dataflow | [dataflow-data-pipeline.json](dataflow-data-pipeline.json) | `a512e320fd473aa52529c0bdae9243dfd145b1e41cf3f6579c97094d77cb6797` | `15429e2fb420c4382be002320d872c1cbee3ddc76f977a47c531c0d3dda2812c` | 6.93 | pass |
+| [architecture-model.html](architecture-model.html) | architecture | [model.architecture.json](model.architecture.json) | `d33fc1f90ac88dc16e6a658cbacf3a5d2ca1e70a5bf5f97d2cd72ae390493cc4` | `9b2696d16b8f5abaf6fbded5cf8726a9eafe9d5d283dec78564b0c956dd41a6a` | 7.00 | pass |
+| [workflow-training-loop.html](workflow-training-loop.html) | workflow | [workflow-training-loop.json](workflow-training-loop.json) | `6fc982b9d0b783862852f2c5d9b61f2671974da3708d215ae6f6fc790d175aef` | `cde3db8dd4629212896a1b45b37bbbee2ef664e307c0f67b78752f8a13b835c3` | 7.07 | pass |
+
+Delivery JSON includes byte counts. Each HTML has a `.delivery.json`, `.visual-check.json`, contact sheet and four PNGs. Validation JSON records the last successful static check.
+
+## Corrections and source mapping
+
+- Model: SWA-only first two blocks, global paths only afterward. Separate DSpark path retained. Sources: `models/config.py:LiteConfig.global_kv_path`, `models/transformer.py:Transformer.forward`.
+- CSA2: unmasked reachable-score L12 top-k is a separate branch from later candidate-masked selection. Per-decoder cache ownership and no-eviction caveat retained. Sources: `models/indexer.py:Indexer.forward`, `models/ced.py:ced_attention_forward`.
+- Data: duplicate identities/content abort preparation. Policy copy shortened without asserting corpus completion. Source: `data/prepare_data.py:prepare`.
+- Training: error edges now originate at forward, gradient norm and update-state checks. CUDA enables BF16. Propagated StopIteration is not normal final-checkpoint completion. Sources: `training/pretrain.py:Trainer._loss`, `training/pretrain.py:Trainer._batch`, `training/pretrain.py:Trainer.guarded_step`, `training/pretrain.py:Trainer.run`.
+- Optional extra loop/abort geometry did not converge in two focused repair attempts and was abandoned. The required norm/update error routes pass; the DS chart still does not draw every continuation/exhaustion transition. Those limitations are disclosed in cards and guide.
+- Browser correction rounds: 1 for model (2px overflow removed by shortening redundant evidence copy), 0 for the other three. Final browser evidence passed. This is not a perceptual correction count.
+
+## Documentation checks
+
+`python3 docs/diagrams/verify.py` passed all four artifact bindings, static validations and fresh browser checks. This project has no `tests/test_doc_refs.py` or `scripts/check_docs.py`. Static guide check: 19 local/navigation links and 7 distinct symbol citations passed. No new testing framework was added.
 
 ## Regeneration
 
-From the repository root:
+From the repository root, validate and deliver a changed candidate, then run visual-check only if delivery succeeds:
 
 ```bash
-node ~/.agents/skills/archify/bin/archify.mjs deliver architecture docs/diagrams/model.architecture.json docs/diagrams/architecture-model.html --quality showcase --json
+node ~/.agents/skills/archify/bin/archify.mjs validate architecture docs/diagrams/architecture-csa2.json --quality showcase --json
 node ~/.agents/skills/archify/bin/archify.mjs deliver architecture docs/diagrams/architecture-csa2.json docs/diagrams/architecture-csa2.html --quality showcase --json
-node ~/.agents/skills/archify/bin/archify.mjs deliver workflow docs/diagrams/workflow-training-loop.json docs/diagrams/workflow-training-loop.html --quality showcase --json
-node ~/.agents/skills/archify/bin/archify.mjs deliver dataflow docs/diagrams/dataflow-data-pipeline.json docs/diagrams/dataflow-data-pipeline.html --quality showcase --json
-node ~/.agents/skills/archify/bin/archify.mjs visual-check docs/diagrams/architecture-model.html --json
 node ~/.agents/skills/archify/bin/archify.mjs visual-check docs/diagrams/architecture-csa2.html --json
-node ~/.agents/skills/archify/bin/archify.mjs visual-check docs/diagrams/workflow-training-loop.html --json
+node ~/.agents/skills/archify/bin/archify.mjs validate dataflow docs/diagrams/dataflow-data-pipeline.json --quality showcase --json
+node ~/.agents/skills/archify/bin/archify.mjs deliver dataflow docs/diagrams/dataflow-data-pipeline.json docs/diagrams/dataflow-data-pipeline.html --quality showcase --json
 node ~/.agents/skills/archify/bin/archify.mjs visual-check docs/diagrams/dataflow-data-pipeline.html --json
-python3 docs/diagrams/verify.py
+node ~/.agents/skills/archify/bin/archify.mjs validate architecture docs/diagrams/model.architecture.json --quality showcase --json
+node ~/.agents/skills/archify/bin/archify.mjs deliver architecture docs/diagrams/model.architecture.json docs/diagrams/architecture-model.html --quality showcase --json
+node ~/.agents/skills/archify/bin/archify.mjs visual-check docs/diagrams/architecture-model.html --json
+node ~/.agents/skills/archify/bin/archify.mjs validate workflow docs/diagrams/workflow-training-loop.json --quality showcase --json
+node ~/.agents/skills/archify/bin/archify.mjs deliver workflow docs/diagrams/workflow-training-loop.json docs/diagrams/workflow-training-loop.html --quality showcase --json
+node ~/.agents/skills/archify/bin/archify.mjs visual-check docs/diagrams/workflow-training-loop.html --json
 ```
 
-## Source mapping
-
-Facts were read from the checked-in architecture contract (`docs/architecture-contract.md`, T1–T13), the design specification (`docs/DESIGN-dsv41-flash-lite.md`), `configs/lite-v3.json`, and the current model code: `models/transformer.py` (forward pass, shared runtimes, block wiring), `models/ced.py` (producer map, decoder `CedProjection`, joint window/global attention), `models/indexer.py` (index keys, candidate pool, top-k selection), `models/csa2.py` (block top-k selection), and the training/data code as mapped inside each workflow/dataflow specification.
-
-- The model diagram reflects `Transformer.forward` ordering: embedding, image-span merge, mHC stream expansion, the 24 blocks, final collapse, and tied FP32 logits.
-- The CED/CSA2 diagram shows the Lite decoder ownership contract: layers 12–23 project layer 8's final hidden state through their own `CedProjection` and never read the encoder cache; L12 owns the decoder index-key cache; L16/L20 score it inside the L12 pool; newest candidate block is pinned; SWA-128 is layer-local and joins global KV in one attention call.
-- The training workflow covers the implemented trainer path (finite-value checks, AdamW, atomic checkpoints, recovery) and does not depict completed full-size GPU results; the dataflow covers the implemented offline prep (checksummed sources, shards, token map, document-disjoint split, integrity manifest) without asserting production corpora.
-- DSpark, QAT/FP8, RL, and stage-2 scale targets are goals or separate paths, not depicted as active training facts.
-
-## Scope and review status
-
-- `visual_review: pending` in each automated-browser receipt: these receipts are machine evidence only.
-- Perceptual visual review: not independently assessed this session; the local image reader could not return rendered screenshots for review. `docs/diagrams/verify.py` rechecks deterministic artifact checks plus automated browser evidence for the four diagrams.
-- The interactive guide `deepseek_v41_visual_guide.html` is hand-authored static HTML with no build step. Its layer and selection-budget explorers were exercised in a real browser over all 24 layers and budget inputs 1, 128, 256, 8192, 16384, 0, 16385, 1.5, and empty; no horizontal overflow at 1440×900 (scrollWidth 1440 = innerWidth). All numbers derive from `configs/lite-v3.json` and the architecture contract; no production-scale claims are made.
-- `architecture-model.delivery.json` and `architecture-csa2.delivery.json` were delivered by this session's parent; workflow and dataflow receipts were produced and independently repaired/verified by a delegated authoring agent in the same repository working tree.
+Redirect successful delivery output to the matching `.delivery.json`, refresh the receipt table and verify hashes. Never retain a prior visual-pass claim after changing a specification.

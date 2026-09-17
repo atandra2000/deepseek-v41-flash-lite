@@ -6,12 +6,12 @@
   "input": "/Users/atandrabharati/Desktop/CoreProjects/LLM/deepseek-v41-flash-lite/docs/diagrams/architecture-csa2.json",
   "output": "/Users/atandrabharati/Desktop/CoreProjects/LLM/deepseek-v41-flash-lite/docs/diagrams/architecture-csa2.html",
   "specification": {
-    "sha256": "57c3e2dcdfea2ab5b232d2439bb33c485051b8952b9ca95ffa10b4da404e607c",
-    "bytes": 4129
+    "sha256": "8600d763b39c97d87620bef7db4fa437e9aa599ed65dc61713857cd9d4ffa983",
+    "bytes": 4974
   },
   "artifact": {
-    "sha256": "7fcfab69ebf552057bd1277cda70b1c27ffc40fb3af73e022271353c944e3658",
-    "bytes": 711196
+    "sha256": "24ce765b8b45d615dd6f092ae45b90b26c246c73f6a96da591b87d9ee8c4c823",
+    "bytes": 714244
   },
   "validation": {
     "checksPassed": 9,

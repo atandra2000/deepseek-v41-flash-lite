@@ -2,7 +2,7 @@
   "schema_version": 1,
   "diagram_type": "architecture",
   "meta": {
-    "title": "DS-V4.1-Flash-Lite \u00b7 Model architecture",
+    "title": "DS-V4.1-Flash-Lite · Model architecture",
     "locale": "en",
     "quality_profile": "showcase",
     "viewBox": [
@@ -29,7 +29,7 @@
       "id": "token-embed",
       "type": "backend",
       "label": "Embedding",
-      "sublabel": "65,536 rows \u00b7 width 1,024",
+      "sublabel": "65,536 rows · width 1,024",
       "pos": [
         330,
         300
@@ -43,7 +43,7 @@
       "id": "image-encoder",
       "type": "backend",
       "label": "ViT + aligner",
-      "sublabel": "12 layers \u00b7 3\u00d73 reduction",
+      "sublabel": "12 layers · 3×3 reduction",
       "pos": [
         330,
         70
@@ -71,7 +71,7 @@
       "id": "transformer-stack",
       "type": "backend",
       "label": "24 Transformer blocks",
-      "sublabel": "Attention \u2192 MoE \u00b7 mHC mixing",
+      "sublabel": "Attention → MoE · mHC mixing",
       "pos": [
         670,
         535
@@ -85,7 +85,7 @@
       "id": "engram-lookup",
       "type": "database",
       "label": "Engram",
-      "sublabel": "Layers 1, 14 \u00b7 orders 2\u20133",
+      "sublabel": "Layers 1, 14 · orders 2–3",
       "pos": [
         960,
         300
@@ -99,7 +99,7 @@
       "id": "tied-logits",
       "type": "backend",
       "label": "Collapse + tied head",
-      "sublabel": "RMSNorm \u2192 FP32 logits",
+      "sublabel": "RMSNorm → FP32 logits",
       "pos": [
         330,
         535
@@ -175,7 +175,7 @@
       "id": "tap-draft",
       "from": "transformer-stack",
       "to": "draft-head",
-      "label": "L21\u201323 taps",
+      "label": "L21–23 taps",
       "variant": "dashed",
       "labelAt": [
         945,
@@ -188,8 +188,8 @@
       "dot": "emerald",
       "title": "Inside each block",
       "items": [
-        "SWA-128 plus CED / CSA2 global attention",
-        "MoE: 16 routed experts, top-2, plus 1 shared"
+        "SWA-128 in all blocks; L0–1 have no global path",
+        "L2–23 add global KV; MoE: top-2 of 16 + shared"
       ]
     },
     {
@@ -204,8 +204,9 @@
       "dot": "slate",
       "title": "Implementation, not a training claim",
       "items": [
-        "Source: models/transformer.py + lite-v3.json",
-        "Full-size GPU results are not asserted here"
+        "Configured: configs/lite-v3.json",
+        "Revision: 099c72954c82857c83c0c75d1d2abbb3127919b0",
+        "Transformer.forward; no GPU result claimed."
       ]
     }
   ]

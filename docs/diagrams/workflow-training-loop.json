@@ -2,7 +2,7 @@
   "schema_version": 2,
   "diagram_type": "workflow",
   "meta": {
-    "title": "Training Loop | Manifest-Bound Recovery",
+    "title": "DS-V4.1-Flash-Lite · Training",
     "locale": "en",
     "animation": "none",
     "quality_profile": "showcase",
@@ -21,13 +21,13 @@
       },
       {
         "id": "exact-recovery",
-        "label": "Exact recovery",
+        "label": "Guarded recovery",
         "focus": [
           "checkpoint",
           "recover",
           "abort"
         ],
-        "note": "Full-state rollback, two skipped batches, halved LR and at most three rollback retries."
+        "note": "Nonfinite rollback only. Clipping failure and dataset exhaustion propagate without graceful completion."
       }
     ]
   },
@@ -91,7 +91,7 @@
       "col": 2,
       "type": "backend",
       "label": "Backward + clip",
-      "sublabel": "gradient norm \u2264 1.0",
+      "sublabel": "gradient norm ≤ 1.0",
       "width": 158,
       "height": 56
     },
@@ -101,7 +101,7 @@
       "col": 3,
       "type": "backend",
       "label": "AdamW + bias",
-      "sublabel": "cosine LR \u00b7 finite checks",
+      "sublabel": "cosine LR · finite checks",
       "width": 158,
       "height": 56
     },
@@ -111,7 +111,7 @@
       "col": 3,
       "type": "database",
       "label": "Atomic checkpoint",
-      "sublabel": "initial \u00b7 timed \u00b7 final",
+      "sublabel": "Initial / timed / target reached",
       "width": 158,
       "height": 56
     },
@@ -121,7 +121,7 @@
       "col": 1,
       "type": "security",
       "label": "Restore + retry",
-      "sublabel": "skip 2 batches \u00b7 LR / 2",
+      "sublabel": "skip 2 batches · LR / 2",
       "width": 158,
       "height": 56
     },
@@ -191,34 +191,51 @@
       "label": "> 3 rollbacks",
       "variant": "security",
       "role": "error"
+    },
+    {
+      "id": "norm-recover",
+      "from": "backward",
+      "to": "recover",
+      "label": "nonfinite norm",
+      "role": "error",
+      "variant": "security"
+    },
+    {
+      "id": "update-recover",
+      "from": "update",
+      "to": "recover",
+      "label": "nonfinite state",
+      "role": "error",
+      "variant": "security"
     }
   ],
   "cards": [
     {
       "dot": "cyan",
-      "title": "Implemented step | pretrain.py",
+      "title": "Configured trainer path",
       "items": [
-        "FP32 model and AdamW state; CUDA BF16 autocast is optional.",
-        "Whole-forward activation replay resets mutable attention runtime.",
-        "Text-only mode rejects images. Exhaustion stops, with no automatic epoch restart."
+        "FP32 model/state; BF16 autocast enabled on CUDA.",
+        "Accumulate token-normalized loss; replay resets runtime.",
+        "configs/lite-v3.json + training/pretrain.py:TrainingConfig",
+        "Revision: 099c72954c82857c83c0c75d1d2abbb3127919b0"
       ]
     },
     {
       "dot": "rose",
-      "title": "Recovery contract | Trainer",
+      "title": "Recovery limits",
       "items": [
-        "Nonfinite loss, norm, parameters or optimizer state trigger rollback.",
-        "Clipping >5 of 100 steps fails without retry.",
-        "Full-state checkpoints bind data/config/RNG. Smoke tolerance 1e-3; last 3 step files retained."
+        "Nonfinite loss/norm/update state → rollback, skip 2, LR / 2.",
+        "Clipping >5 of 100 attempts fails without retry.",
+        "StopIteration can also escape retry skips; no graceful final save."
       ]
     },
     {
       "dot": "amber",
-      "title": "Runbook boundary | runbook.py",
+      "title": "Persistence and evidence",
       "items": [
-        "CPU-tested: pin \u2192 512 val probes \u2192 200-step repeat \u2192 C0\u2013C6 ladder.",
-        "Recorded approval hashes guard against config drift.",
-        "A100 repeat, production gate measurements and training remain pending."
+        "Initial and timed saves; final save only after target reached.",
+        "Data/config/RNG bound; smoke tolerance 1e-3; keep 3 files.",
+        "training/pretrain.py:Trainer.run; production GPU run pending."
       ]
     }
   ]
