@@ -4,7 +4,9 @@
 > (2026-09-16). Phase 0, 1, and 2 complete (Tasks 1–9 green); Phase 3:
 > Task 10 code + fixture tests green (production corpus prep open); Task 11
 > complete: trainer/recovery, GateRunner, executable variants and matched-token
-> controls are CPU-verified (toy C0–C6 and bitwise repeat). A100
+> controls are CPU-verified (toy C0–C6 and bitwise repeat). Task 10 production
+> corpus prep is blocked on external sources (full 50,257-entry GPT-2
+> tokenizer.json + FineWeb-Edu/DataComp). A100
 > 200-step bitwise repeat and C0–C6 measured evidence remain for Task 12.
 > This document pins the architecture contract; the
 > [execution plan](EXECUTION-PLAN-dsv41-flash-lite.md) pins the build order.

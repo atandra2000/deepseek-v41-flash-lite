@@ -3,8 +3,10 @@
 > **Status:** implementation plan for [candidate 13](../../../llm-research/candidates/13-deepseek-v41-flash.md)
 > v3 and the [design specification](DESIGN-dsv41-flash-lite.md). Phase 0, 1, 2
 > complete (Tasks 1–9 green). Phase 3 (Data & Trainer): Task 10 code + fixture
-> tests green (production corpus prep open); Task 11 complete: trainer/recovery,
-> GateRunner, executable variants and matched-token controls are CPU-verified.
+> tests green — production corpus prep is blocked on external sources (full
+> 50,257-entry GPT-2 tokenizer.json + FineWeb-Edu/DataComp); Task 11 complete:
+> trainer/recovery, GateRunner, executable variants and matched-token controls
+> are CPU-verified.
 > A100 200-step bitwise repeat and C0–C6 measured evidence remain for Task 12.
 > Sequencing: DiffusionGemma-Lite / HiLS-Attention-Lite training debt and the
 > Gemma-4-E2B decision come first (candidate §11.4).
@@ -166,6 +168,16 @@ committed under `tests/golden/`.
       yet prepared — requires the full 50,257-entry GPT-2 tokenizer.json and
       local FineWeb-Edu/DataComp sources; the strict loader rejects partial
       vocabularies.)*
+
+  **Blocked on external sources (Task 10 closeout, cannot be CPU-completed):**
+  the production corpus cannot be prepared in this environment. Required but
+  unavailable: the full 50,257-entry GPT-2 `tokenizer.json` (vendored
+  `tokenizers` cannot fabricate merges) and the FineWeb-Edu / DataComp
+  downloads themselves. The loader is intentionally strict — it rejects
+  partial vocabularies and padded manifests — so no fixture or partial token
+  count can stand in for production prep, and none will be fabricated. This
+  closeout is therefore a docs commit: code + fixture tests stay green, and
+  the blocked-on-sources status above stands until the sources are provided.
 - [x] Stage-2 packing with ≥30% documents ≥16K tokens (asserted by the
       loader and preflight); resumable deterministic ordering
       (`data/dataset.py:PackedDataset`); document-disjointness test.
