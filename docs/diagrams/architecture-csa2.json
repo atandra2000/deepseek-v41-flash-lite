@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "CED + CSA2 \u00b7 Decoder attention",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "viewBox": [
+      1380,
+      740
+    ]
+  },
+  "components": [
+    {
+      "id": "producer-state",
+      "type": "database",
+      "label": "Layer 8 output",
+      "sublabel": "Producer hidden state",
+      "pos": [
+        40,
+        350
+      ],
+      "size": [
+        200,
+        76
+      ]
+    },
+    {
+      "id": "decoder-project",
+      "type": "backend",
+      "label": "Per-decoder projection",
+      "sublabel": "WZ \u2192 WKV \u2192 norm \u00b7 m=1",
+      "pos": [
+        370,
+        350
+      ],
+      "size": [
+        220,
+        76
+      ]
+    },
+    {
+      "id": "decoder-cache",
+      "type": "database",
+      "label": "Own global KV cache",
+      "sublabel": "RoPE after indexer read",
+      "pos": [
+        740,
+        350
+      ],
+      "size": [
+        220,
+        76
+      ]
+    },
+    {
+      "id": "joint-attention",
+      "type": "backend",
+      "label": "Joint sparse attention",
+      "sublabel": "[window, global] \u00b7 sink logit",
+      "pos": [
+        1110,
+        350
+      ],
+      "size": [
+        240,
+        76
+      ]
+    },
+    {
+      "id": "index-keys",
+      "type": "backend",
+      "label": "L12 index keys",
+      "sublabel": "Pre-RoPE latent \u2192 key cache",
+      "pos": [
+        370,
+        90
+      ],
+      "size": [
+        220,
+        76
+      ]
+    },
+    {
+      "id": "candidate-pool",
+      "type": "backend",
+      "label": "L12 candidate pool",
+      "sublabel": "1,024 blocks \u00d7 8 positions",
+      "pos": [
+        740,
+        90
+      ],
+      "size": [
+        220,
+        76
+      ]
+    },
+    {
+      "id": "selected-indices",
+      "type": "messagebus",
+      "label": "Top-256 indices",
+      "sublabel": "L16 / L20 reindex \u00b7 rest reuse",
+      "pos": [
+        1110,
+        90
+      ],
+      "size": [
+        240,
+        76
+      ]
+    },
+    {
+      "id": "local-window",
+      "type": "database",
+      "label": "Layer-local SWA",
+      "sublabel": "128-token sliding window",
+      "pos": [
+        1110,
+        580
+      ],
+      "size": [
+        240,
+        76
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "hidden-project",
+      "from": "producer-state",
+      "to": "decoder-project",
+      "label": "hidden state",
+      "variant": "emphasis"
+    },
+    {
+      "id": "cache-projected",
+      "from": "decoder-project",
+      "to": "decoder-cache",
+      "label": "RoPE + store",
+      "variant": "emphasis"
+    },
+    {
+      "id": "read-own-kv",
+      "from": "decoder-cache",
+      "to": "joint-attention",
+      "label": "own latents",
+      "variant": "emphasis"
+    },
+    {
+      "id": "index-pre-rope",
+      "from": "decoder-project",
+      "to": "index-keys",
+      "label": "L12 latent"
+    },
+    {
+      "id": "build-pool",
+      "from": "index-keys",
+      "to": "candidate-pool",
+      "label": "score + block max"
+    },
+    {
+      "id": "select-within-pool",
+      "from": "candidate-pool",
+      "to": "selected-indices",
+      "label": "mask later scores"
+    },
+    {
+      "id": "gather-positions",
+      "from": "selected-indices",
+      "to": "joint-attention",
+      "label": "gather indices",
+      "labelAt": [
+        1230,
+        180
+      ]
+    },
+    {
+      "id": "read-window",
+      "from": "local-window",
+      "to": "joint-attention",
+      "label": "local KV"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Lite ownership",
+      "items": [
+        "L0\u20131 are SWA-only. L2 / L8 publish m=2 KV.",
+        "L3\u20137 / L9\u201311 reuse same-ratio producer caches.",
+        "L12\u201323 each project from L8 hidden, not its cache."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Selection is not cache eviction",
+      "items": [
+        "Newest reachable candidate block is always kept.",
+        "L16 / L20 score L12 keys using their own queries.",
+        "Full-length KV buffers remain allocated in this implementation."
+      ]
+    }
+  ]
+}

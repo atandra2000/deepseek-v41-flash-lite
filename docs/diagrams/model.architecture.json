@@ -1,0 +1,212 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "DS-V4.1-Flash-Lite \u00b7 Model architecture",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1200,
+      700
+    ]
+  },
+  "components": [
+    {
+      "id": "token-input",
+      "type": "external",
+      "label": "Token IDs",
+      "sublabel": "Text + image span markers",
+      "pos": [
+        30,
+        300
+      ],
+      "size": [
+        180,
+        76
+      ]
+    },
+    {
+      "id": "token-embed",
+      "type": "backend",
+      "label": "Embedding",
+      "sublabel": "65,536 rows \u00b7 width 1,024",
+      "pos": [
+        330,
+        300
+      ],
+      "size": [
+        210,
+        76
+      ]
+    },
+    {
+      "id": "image-encoder",
+      "type": "backend",
+      "label": "ViT + aligner",
+      "sublabel": "12 layers \u00b7 3\u00d73 reduction",
+      "pos": [
+        330,
+        70
+      ],
+      "size": [
+        210,
+        76
+      ]
+    },
+    {
+      "id": "residual-streams",
+      "type": "backend",
+      "label": "mHC streams",
+      "sublabel": "Expand to 2 residual copies",
+      "pos": [
+        670,
+        300
+      ],
+      "size": [
+        210,
+        76
+      ]
+    },
+    {
+      "id": "transformer-stack",
+      "type": "backend",
+      "label": "24 Transformer blocks",
+      "sublabel": "Attention \u2192 MoE \u00b7 mHC mixing",
+      "pos": [
+        670,
+        535
+      ],
+      "size": [
+        260,
+        80
+      ]
+    },
+    {
+      "id": "engram-lookup",
+      "type": "database",
+      "label": "Engram",
+      "sublabel": "Layers 1, 14 \u00b7 orders 2\u20133",
+      "pos": [
+        960,
+        300
+      ],
+      "size": [
+        210,
+        76
+      ]
+    },
+    {
+      "id": "tied-logits",
+      "type": "backend",
+      "label": "Collapse + tied head",
+      "sublabel": "RMSNorm \u2192 FP32 logits",
+      "pos": [
+        330,
+        535
+      ],
+      "size": [
+        210,
+        80
+      ]
+    },
+    {
+      "id": "draft-head",
+      "type": "backend",
+      "label": "DSpark",
+      "sublabel": "Optional 2-block drafter",
+      "pos": [
+        960,
+        535
+      ],
+      "size": [
+        210,
+        80
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "embed-ids",
+      "from": "token-input",
+      "to": "token-embed",
+      "label": "lookup",
+      "variant": "emphasis"
+    },
+    {
+      "id": "merge-images",
+      "from": "image-encoder",
+      "to": "token-embed",
+      "label": "fill IMAGE slots",
+      "labelAt": [
+        435,
+        160
+      ]
+    },
+    {
+      "id": "expand-stream",
+      "from": "token-embed",
+      "to": "residual-streams",
+      "label": "expand",
+      "variant": "emphasis"
+    },
+    {
+      "id": "run-blocks",
+      "from": "residual-streams",
+      "to": "transformer-stack",
+      "label": "forward",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "inject-ngrams",
+      "from": "engram-lookup",
+      "to": "transformer-stack",
+      "label": "gated lookup"
+    },
+    {
+      "id": "read-logits",
+      "from": "transformer-stack",
+      "to": "tied-logits",
+      "label": "collapse",
+      "variant": "emphasis"
+    },
+    {
+      "id": "tap-draft",
+      "from": "transformer-stack",
+      "to": "draft-head",
+      "label": "L21\u201323 taps",
+      "variant": "dashed",
+      "labelAt": [
+        945,
+        629
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Inside each block",
+      "items": [
+        "SWA-128 plus CED / CSA2 global attention",
+        "MoE: 16 routed experts, top-2, plus 1 shared"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Separate draft path",
+      "items": [
+        "forward_spec consumes attention-input taps",
+        "Drafting is not part of ordinary forward"
+      ]
+    },
+    {
+      "dot": "slate",
+      "title": "Implementation, not a training claim",
+      "items": [
+        "Source: models/transformer.py + lite-v3.json",
+        "Full-size GPU results are not asserted here"
+      ]
+    }
+  ]
+}

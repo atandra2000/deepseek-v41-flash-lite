@@ -5,6 +5,10 @@ CSA2 + hierarchical sparse indexer + SWA + mHC + Engram + MoE + DSpark + ViT —
 re-sized to ~1.16B total / ~205M active parameters, targeting 4×A100 80GB for
 ≤ $500.
 
+**Visual guide**
+
+[Open the interactive architecture guide](docs/diagrams/deepseek_v41_visual_guide.html) for the model, CED/CSA2 attention, training workflow, and data pipeline, plus layer and selection-budget explorers. Download/open the HTML locally for interactive viewing. [Validation receipts and reproduction](docs/diagrams/RECEIPTS.md).
+
 **Normative documents**
 
 - [Design specification](docs/DESIGN-dsv41-flash-lite.md) — architecture contract, Lite sizing, deviations.

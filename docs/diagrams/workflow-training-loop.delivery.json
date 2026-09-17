@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "workflow",
+  "input": "/Users/atandrabharati/Desktop/CoreProjects/LLM/deepseek-v41-flash-lite/docs/diagrams/workflow-training-loop.json",
+  "output": "/Users/atandrabharati/Desktop/CoreProjects/LLM/deepseek-v41-flash-lite/docs/diagrams/workflow-training-loop.html",
+  "specification": {
+    "sha256": "9f01d0e8227756c7a2a7dd79894f7ce148c34786ca2393b14e7d280ea7149b2b",
+    "bytes": 5188
+  },
+  "artifact": {
+    "sha256": "c25c480629b48ec3f85354b9b3bf94f535ed56013e0eb67919de133f1aab53a0",
+    "bytes": 711775
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

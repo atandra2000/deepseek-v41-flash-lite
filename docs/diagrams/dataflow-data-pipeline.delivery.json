@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "dataflow",
+  "input": "/Users/atandrabharati/Desktop/CoreProjects/LLM/deepseek-v41-flash-lite/docs/diagrams/dataflow-data-pipeline.json",
+  "output": "/Users/atandrabharati/Desktop/CoreProjects/LLM/deepseek-v41-flash-lite/docs/diagrams/dataflow-data-pipeline.html",
+  "specification": {
+    "sha256": "c17d878535fa66e4f5618f338a0fc8a9f72c6d81715198b67666d8a07ccb7f1a",
+    "bytes": 4919
+  },
+  "artifact": {
+    "sha256": "6292c73a476cce68eea7b218fcd427381edb8725b1590749293308b38a69ae12",
+    "bytes": 710562
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DS-V4.1-Flash-Lite · Interactive Systems & Architecture Guide</title>
+<style>
+:root{color-scheme:light dark;--bg:#f6f5f0;--paper:#fff;--ink:#142328;--muted:#53666d;--line:#d5ded9;--accent:#006699;--soft:#e4eff6}
+@media(prefers-color-scheme:dark){:root{--bg:#10181c;--paper:#172227;--ink:#e3eeeb;--muted:#a3b8b6;--line:#33454d;--accent:#66bbee;--soft:#1e323c}}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.7 system-ui,-apple-system,sans-serif}header,main,footer{max-width:1160px;margin:auto;padding:32px 24px}header{padding-top:60px;padding-bottom:0}a{color:var(--accent);text-underline-offset:4px}a:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:4px}.eyebrow{font:600 12px/1.5 ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}h1{font-size:clamp(36px,5.5vw,68px);line-height:1.05;margin:12px 0 20px;letter-spacing:-.03em}h2{line-height:1.2;margin-top:48px}.lead{font-size:clamp(18px,2.2vw,22px);line-height:1.5;color:var(--muted);max-width:900px}.pills,nav{display:flex;flex-wrap:wrap;gap:12px;margin:24px 0}.pill{background:var(--paper);border:1px solid var(--line);padding:6px 14px;border-radius:999px;font:500 13px ui-monospace,monospace}nav a{font-weight:600;text-decoration:none;padding:8px 14px;border-radius:8px;background:var(--soft)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:24px}.card,.explorer{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:24px}.card h3{margin-top:0}.card p,.muted{color:var(--muted)}.button{display:inline-block;font-weight:600;padding:8px 16px;border-radius:8px;background:var(--accent);color:var(--paper);text-decoration:none;margin-top:10px}@media(prefers-color-scheme:dark){.button{color:#10181c}}.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:20px}label{display:block;font-weight:600}select,input{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}.result{background:var(--soft);border:1px solid var(--line);padding:20px;border-radius:12px;margin-top:20px}.result p{margin:6px 0}code{font:13px ui-monospace,monospace;overflow-wrap:anywhere}details{border-bottom:1px solid var(--line);padding:16px 0}summary{cursor:pointer;font-weight:600}footer{border-top:1px solid var(--line);margin-top:40px;color:var(--muted)}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<header>
+<div class="eyebrow">CoreProjects / LLM / source-grounded visual guide</div>
+<h1>DS-V4.1<br>Flash-Lite</h1>
+<p class="lead">Explore the multimodal Transformer, its cross-layer KV pathway, and the data and training contracts. Four standalone Archify diagrams connect the model's mechanisms to the code that implements them.</p>
+<div class="pills"><span class="pill">24 layers · width 1,024</span><span class="pill">16 routed experts · top-2</span><span class="pill">2 residual streams</span><span class="pill">4K → 16K context targets</span></div>
+<nav aria-label="Guide sections"><a href="#diagrams">Diagrams</a><a href="#layers">Layer explorer</a><a href="#selection">Selection budget</a><a href="#evidence">Evidence & limits</a></nav>
+</header>
+<main>
+<section id="diagrams"><h2>Follow the system</h2><div class="grid">
+<article class="card"><div class="eyebrow">01 / Architecture</div><h3>Model & multimodal path</h3><p>Embedding, ViT alignment, mHC streams, attention and MoE blocks, Engram injection, tied logits and the separate DSpark draft path.</p><a class="button" href="architecture-model.html">Explore model →</a></article>
+<article class="card"><div class="eyebrow">02 / Mechanism</div><h3>CED + CSA2 attention</h3><p>Decoder-owned projections, candidate-source index keys, block-pool construction and top-k reuse. The local window joins global KV in one attention operation.</p><a class="button" href="architecture-csa2.html">Explore attention →</a></article>
+<article class="card"><div class="eyebrow">03 / Workflow</div><h3>Training & recovery</h3><p>Trace the implemented training path, finite-value checks, optimizer updates and checkpoint recovery without confusing local verification with a completed GPU run.</p><a class="button" href="workflow-training-loop.html">Explore training →</a></article>
+<article class="card"><div class="eyebrow">04 / Data flow</div><h3>Offline data pipeline</h3><p>Local checked sources become token shards and image patches, a document-disjoint split, integrity metadata and deterministic packed batches.</p><a class="button" href="dataflow-data-pipeline.html">Explore data →</a></article>
+</div><p class="muted">Each diagram supports light/dark themes, search, focus, pan/zoom and export. Editable specifications and delivery evidence live alongside the HTML files.</p></section>
+<section id="layers"><h2>Which layer owns what?</h2><div class="explorer"><label for="layer">Backbone layer (zero-based)</label><select id="layer"></select><div id="layer-result" class="result" role="status" aria-live="polite"></div><p class="muted">Configuration: <a href="../../configs/lite-v3.json">lite-v3.json</a>. This explorer describes the full variant, not ablated controls.</p></div></section>
+<section id="selection"><h2>Selection is not storage</h2><div class="explorer"><div class="controls"><div><label for="context">Reachable decoder positions</label><input id="context" type="number" min="1" max="16384" step="1" value="16384"></div></div><div class="result" id="selection-result" role="status" aria-live="polite"></div><p class="muted">An upper-bound illustration for the last decoder query, not a measured cache reduction or speedup. Partial blocks can reduce the pool's actual position count. L12 selects its own top-k from the full reachable stream and publishes the pool for later reindexers. Full-length KV buffers remain allocated.</p></div></section>
+<section id="evidence"><h2>Evidence & boundaries</h2>
+<details open><summary>Lite behavior takes precedence over early design prose</summary><p>Encoder layers 2 and 8 publish compressed KV at ratio 2. Same-ratio encoder consumers reuse the latest cache. Decoder layers 12–23 instead project layer 8's final hidden state through their own <code>CedProjection</code> at ratio 1. They do not read the encoder cache directly. L12 owns the decoder index-key cache used by L16 and L20.</p><p>Sources: <a href="../../models/ced.py">ced.py</a>, <a href="../../models/indexer.py">indexer.py</a>, <a href="../../models/csa2.py">csa2.py</a> and <a href="../../models/transformer.py">transformer.py</a>.</p></details>
+<details><summary>Implemented mechanisms are not production results</summary><p>The 4×A100 training budget, production corpus and 16K quality/KV comparisons are goals, not claims established by these diagrams. The repository contains toy-scale evaluation evidence. Check the runbook and execution plan for remaining acceptance gates. BF16 is the baseline and FP8 storage work is a separate post-production gate.</p><p><a href="../EXECUTION-PLAN-dsv41-flash-lite.md">Execution plan</a> · <a href="../../training/README.md">Training runbook</a> · <a href="../../results/eval-headline-toy.json">Toy evaluation</a></p></details>
+<details><summary>Reproduce and audit the diagrams</summary><p>See <a href="RECEIPTS.md">RECEIPTS.md</a> for source mappings, regeneration commands, exact specification/artifact hashes and separate automated-browser and perceptual-review statuses.</p><p>The guide's calculations use only the checked <code>lite-v3.json</code> constants: candidate blocks 1,024, block size 8, top-k 256 and window 128.</p></details>
+</section>
+</main><footer>Built in the same guide-and-diagram format as the sibling DeepSeek-v3-Lite and DiffusionGemma-Lite repositories. Static local artifacts. No network access required.</footer>
+<script>
+'use strict';
+const layer=document.getElementById('layer');
+for(let i=0;i<24;i++){const option=document.createElement('option');option.value=String(i);option.textContent=`Layer ${i}`;layer.append(option)}
+function describeLayer(i){
+ const global=i<2?'No global KV. Sliding window only.':i===2||i===8?'Own compressor publishes ratio-2 global KV.':i<12?`Reuse layer ${i<8?2:8}'s ratio-2 global KV cache.`:'Own ratio-1 CED projection from layer 8 output hidden state.';
+ const index=i<2?'No global indexer.':i===2||i===8?'Index source: owns keys, searches the entire reachable compressed prefix.':i===12?'Full/candidate source: owns decoder index keys, selects top-k and publishes the block pool.':i===16||i===20?'Reindex: own queries score layer 12 keys, masked to the candidate pool.':'Reuse the most recent same-ratio index selection.';
+ const extras=[1,14].includes(i)?'Engram lookup precedes attention. ':'';
+ return [`Global path: ${global}`,`Selection: ${index}`,`${extras}${i>=21?'Attention-input tap feeds DSpark. ':''}All layers retain SWA-128 and MoE.`];
+}
+function renderLayer(){const box=document.getElementById('layer-result');box.replaceChildren();for(const text of describeLayer(Number(layer.value))){const p=document.createElement('p');p.textContent=text;box.append(p)}}
+function selectionBudget(n){return {blocks:Math.min(1024,Math.ceil(n/8)),pool:Math.min(n,8192),selected:Math.min(n,256),window:Math.min(n,128)}}
+function renderBudget(){const input=document.getElementById('context'),box=document.getElementById('selection-result');const n=Number(input.value);if(!Number.isInteger(n)||n<1||n>16384){box.textContent='Enter a whole number from 1 to 16,384.';return}const b=selectionBudget(n);box.textContent=`At ${n.toLocaleString('en-US')} reachable positions: up to ${b.blocks.toLocaleString('en-US')} candidate blocks / ${b.pool.toLocaleString('en-US')} pool positions, ${b.selected} selected global indices, and ${b.window} local window positions.`}
+layer.value='12';layer.addEventListener('change',renderLayer);document.getElementById('context').addEventListener('input',renderBudget);renderLayer();renderBudget();
+</script>
+</body>
+</html>

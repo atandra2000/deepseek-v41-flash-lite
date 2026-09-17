@@ -1,0 +1,225 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Training Loop | Manifest-Bound Recovery",
+    "locale": "en",
+    "animation": "none",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "optimizer-step",
+        "label": "Optimizer step",
+        "focus": [
+          "setup",
+          "batch",
+          "forward",
+          "backward",
+          "update"
+        ],
+        "note": "Explicit batch sizes, token-normalized CE, clipped gradients, AdamW and router-bias steering."
+      },
+      {
+        "id": "exact-recovery",
+        "label": "Exact recovery",
+        "focus": [
+          "checkpoint",
+          "recover",
+          "abort"
+        ],
+        "note": "Full-state rollback, two skipped batches, halved LR and at most three rollback retries."
+      }
+    ]
+  },
+  "lanes": [
+    {
+      "id": "entry",
+      "label": "Setup and durability"
+    },
+    {
+      "id": "step",
+      "label": "One guarded optimizer step"
+    },
+    {
+      "id": "safety",
+      "label": "Failure handling",
+      "variant": "exception"
+    }
+  ],
+  "mainPath": [
+    "setup",
+    "batch",
+    "forward",
+    "backward",
+    "update",
+    "checkpoint"
+  ],
+  "nodes": [
+    {
+      "id": "setup",
+      "lane": "entry",
+      "col": 0,
+      "type": "backend",
+      "label": "Trainer setup",
+      "sublabel": "seed 1337 + stage ID",
+      "width": 158,
+      "height": 56
+    },
+    {
+      "id": "batch",
+      "lane": "step",
+      "col": 0,
+      "type": "messagebus",
+      "label": "Packed batches",
+      "sublabel": "explicit batch + accum",
+      "width": 158,
+      "height": 56
+    },
+    {
+      "id": "forward",
+      "lane": "step",
+      "col": 1,
+      "type": "backend",
+      "label": "Forward + CE",
+      "sublabel": "sum CE / labeled tokens",
+      "width": 158,
+      "height": 56
+    },
+    {
+      "id": "backward",
+      "lane": "step",
+      "col": 2,
+      "type": "backend",
+      "label": "Backward + clip",
+      "sublabel": "gradient norm \u2264 1.0",
+      "width": 158,
+      "height": 56
+    },
+    {
+      "id": "update",
+      "lane": "step",
+      "col": 3,
+      "type": "backend",
+      "label": "AdamW + bias",
+      "sublabel": "cosine LR \u00b7 finite checks",
+      "width": 158,
+      "height": 56
+    },
+    {
+      "id": "checkpoint",
+      "lane": "entry",
+      "col": 3,
+      "type": "database",
+      "label": "Atomic checkpoint",
+      "sublabel": "initial \u00b7 timed \u00b7 final",
+      "width": 158,
+      "height": 56
+    },
+    {
+      "id": "recover",
+      "lane": "safety",
+      "col": 1,
+      "type": "security",
+      "label": "Restore + retry",
+      "sublabel": "skip 2 batches \u00b7 LR / 2",
+      "width": 158,
+      "height": 56
+    },
+    {
+      "id": "abort",
+      "lane": "safety",
+      "col": 2,
+      "type": "security",
+      "label": "Abort run",
+      "sublabel": "rollback limit exceeded",
+      "width": 158,
+      "height": 56
+    }
+  ],
+  "edges": [
+    {
+      "id": "setup-batch",
+      "from": "setup",
+      "to": "batch",
+      "variant": "emphasis"
+    },
+    {
+      "id": "batch-forward",
+      "from": "batch",
+      "to": "forward",
+      "variant": "emphasis"
+    },
+    {
+      "id": "forward-backward",
+      "from": "forward",
+      "to": "backward",
+      "variant": "emphasis"
+    },
+    {
+      "id": "backward-update",
+      "from": "backward",
+      "to": "update",
+      "variant": "emphasis"
+    },
+    {
+      "id": "update-checkpoint",
+      "from": "update",
+      "to": "checkpoint",
+      "label": "save cadence",
+      "variant": "dashed"
+    },
+    {
+      "id": "forward-recover",
+      "from": "forward",
+      "to": "recover",
+      "label": "nonfinite",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "recover-batch",
+      "from": "recover",
+      "to": "batch",
+      "label": "retry",
+      "variant": "dashed",
+      "role": "return"
+    },
+    {
+      "id": "recover-abort",
+      "from": "recover",
+      "to": "abort",
+      "label": "> 3 rollbacks",
+      "variant": "security",
+      "role": "error"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Implemented step | pretrain.py",
+      "items": [
+        "FP32 model and AdamW state; CUDA BF16 autocast is optional.",
+        "Whole-forward activation replay resets mutable attention runtime.",
+        "Text-only mode rejects images. Exhaustion stops, with no automatic epoch restart."
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Recovery contract | Trainer",
+      "items": [
+        "Nonfinite loss, norm, parameters or optimizer state trigger rollback.",
+        "Clipping >5 of 100 steps fails without retry.",
+        "Full-state checkpoints bind data/config/RNG. Smoke tolerance 1e-3; last 3 step files retained."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Runbook boundary | runbook.py",
+      "items": [
+        "CPU-tested: pin \u2192 512 val probes \u2192 200-step repeat \u2192 C0\u2013C6 ladder.",
+        "Recorded approval hashes guard against config drift.",
+        "A100 repeat, production gate measurements and training remain pending."
+      ]
+    }
+  ]
+}

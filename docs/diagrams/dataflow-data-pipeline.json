@@ -1,0 +1,208 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Data Pipeline | Offline and Manifest-Verified",
+    "locale": "en",
+    "animation": "none",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1080,
+      500
+    ],
+    "views": [
+      {
+        "id": "host-preparation",
+        "label": "Host preparation",
+        "focus": [
+          "local",
+          "tokenizer",
+          "prepare",
+          "tree"
+        ],
+        "note": "Already-cleaned local inputs become document-indexed uint16 shards. No downloads occur."
+      },
+      {
+        "id": "integrity-packing",
+        "label": "Integrity and packing",
+        "focus": [
+          "tree",
+          "preflight",
+          "packed"
+        ],
+        "note": "Every iterator opens only after full local preflight. Images remain whole and invalid targets are masked."
+      },
+      {
+        "id": "consumers",
+        "label": "Training and probes",
+        "focus": [
+          "packed",
+          "consume"
+        ],
+        "note": "Single-consumer tensors feed the trainer, or a separate val iterator pins exactly 512 probe batches."
+      }
+    ]
+  },
+  "stages": [
+    {
+      "label": "Local inputs"
+    },
+    {
+      "label": "Prepare"
+    },
+    {
+      "label": "Persist"
+    },
+    {
+      "label": "Verify"
+    },
+    {
+      "label": "Pack and consume"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "local",
+      "type": "external",
+      "label": "Clean local JSONL",
+      "sublabel": "text / image parts",
+      "stage": 0,
+      "row": 0,
+      "width": 150,
+      "height": 56
+    },
+    {
+      "id": "tokenizer",
+      "type": "external",
+      "label": "GPT-2 BPE",
+      "sublabel": "local tokenizer.json",
+      "stage": 0,
+      "row": 2,
+      "width": 150,
+      "height": 56
+    },
+    {
+      "id": "prepare",
+      "type": "backend",
+      "label": "prepare()",
+      "sublabel": "encode \u00b7 EOS \u00b7 dedup",
+      "stage": 1,
+      "row": 1,
+      "width": 156,
+      "height": 56
+    },
+    {
+      "id": "tree",
+      "type": "database",
+      "label": "Prepared tree",
+      "sublabel": "shards + SQLite + map",
+      "stage": 2,
+      "row": 1,
+      "width": 156,
+      "height": 56
+    },
+    {
+      "id": "preflight",
+      "type": "security",
+      "label": "preflight()",
+      "sublabel": "hashes + bounds + splits",
+      "stage": 3,
+      "row": 1,
+      "width": 156,
+      "height": 56
+    },
+    {
+      "id": "packed",
+      "type": "backend",
+      "label": "PackedDataset",
+      "sublabel": "mmap \u00b7 ordered packing",
+      "stage": 4,
+      "row": 1,
+      "width": 156,
+      "height": 56
+    },
+    {
+      "id": "consume",
+      "type": "backend",
+      "label": "Trainer / probes",
+      "sublabel": "train / separate val split",
+      "stage": 4,
+      "row": 2,
+      "width": 156,
+      "height": 56
+    }
+  ],
+  "flows": [
+    {
+      "id": "local-prepare",
+      "from": "local",
+      "to": "prepare",
+      "label": "documents",
+      "variant": "emphasis"
+    },
+    {
+      "id": "tokenizer-prepare",
+      "from": "tokenizer",
+      "to": "prepare",
+      "label": "BPE IDs"
+    },
+    {
+      "id": "prepare-tree",
+      "from": "prepare",
+      "to": "tree",
+      "label": "uint16",
+      "variant": "emphasis"
+    },
+    {
+      "id": "tree-preflight",
+      "from": "tree",
+      "to": "preflight",
+      "label": "manifest",
+      "variant": "emphasis"
+    },
+    {
+      "id": "preflight-packed",
+      "from": "preflight",
+      "to": "packed",
+      "label": "verified",
+      "variant": "emphasis"
+    },
+    {
+      "id": "packed-consume",
+      "from": "packed",
+      "to": "consume",
+      "label": "tensors",
+      "variant": "emphasis",
+      "labelDy": 24
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Preparation | prepare_data.py",
+      "items": [
+        "Local source path, revision and SHA-256 checked. No downloads or cleaning.",
+        "Content-hash order; val split uses hash mod 11 = 0, not an exact 90/10 quota.",
+        "Manifest written last; normalized float32 image patches stored separately."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Packing | dataset.py",
+      "items": [
+        "SQLite document index; mmap uint16 \u2192 int64 inputs and shifted labels.",
+        "Boundary/image/padding targets: -100. Images never split.",
+        "Resume binds manifest/config and exact position. No workers or automatic repeat."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Production is still pending",
+      "items": [
+        "Production preflight requires 20B train text, 2B val text and 2B train image-text tokens.",
+        "Stage 2 selects text only and requires \u226530% long documents at the configured context.",
+        "Fixture mode waives corpus budgets only. Real corpus and full tokenizer availability remain unverified."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/Users/atandrabharati/Desktop/CoreProjects/LLM/deepseek-v41-flash-lite/docs/diagrams/architecture-csa2.json",
+  "output": "/Users/atandrabharati/Desktop/CoreProjects/LLM/deepseek-v41-flash-lite/docs/diagrams/architecture-csa2.html",
+  "specification": {
+    "sha256": "57c3e2dcdfea2ab5b232d2439bb33c485051b8952b9ca95ffa10b4da404e607c",
+    "bytes": 4129
+  },
+  "artifact": {
+    "sha256": "7fcfab69ebf552057bd1277cda70b1c27ffc40fb3af73e022271353c944e3658",
+    "bytes": 711196
+  },
+  "validation": {
+    "checksPassed": 9,
+    "checkCount": 9,
+    "compositionProfile": "showcase",
+    "compositionStatus": "pass",
+    "errors": 0,
+    "warnings": 0
+  }
+}

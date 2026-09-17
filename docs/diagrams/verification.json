@@ -1,0 +1,70 @@
+{
+  "passed": true,
+  "diagrams": [
+    {
+      "diagram": "architecture-model",
+      "passed": true,
+      "exit_code": 0,
+      "specification": {
+        "sha256": "50109595655aab09784b37dbce0a07dadecaf371c7a5734834d4806a983952c8",
+        "bytes": 4113
+      },
+      "artifact": {
+        "sha256": "bc0c9171006fc5771068f5441405016c27e926c4b2d37b8f9194999fe426618d",
+        "bytes": 710270
+      },
+      "browser_receipt": "architecture-model.visual-check.json",
+      "diagnostics": [],
+      "stderr": ""
+    },
+    {
+      "diagram": "architecture-csa2",
+      "passed": true,
+      "exit_code": 0,
+      "specification": {
+        "sha256": "57c3e2dcdfea2ab5b232d2439bb33c485051b8952b9ca95ffa10b4da404e607c",
+        "bytes": 4129
+      },
+      "artifact": {
+        "sha256": "7fcfab69ebf552057bd1277cda70b1c27ffc40fb3af73e022271353c944e3658",
+        "bytes": 711196
+      },
+      "browser_receipt": "architecture-csa2.visual-check.json",
+      "diagnostics": [],
+      "stderr": ""
+    },
+    {
+      "diagram": "workflow-training-loop",
+      "passed": true,
+      "exit_code": 0,
+      "specification": {
+        "sha256": "9f01d0e8227756c7a2a7dd79894f7ce148c34786ca2393b14e7d280ea7149b2b",
+        "bytes": 5188
+      },
+      "artifact": {
+        "sha256": "c25c480629b48ec3f85354b9b3bf94f535ed56013e0eb67919de133f1aab53a0",
+        "bytes": 711775
+      },
+      "browser_receipt": "workflow-training-loop.visual-check.json",
+      "diagnostics": [],
+      "stderr": ""
+    },
+    {
+      "diagram": "dataflow-data-pipeline",
+      "passed": true,
+      "exit_code": 0,
+      "specification": {
+        "sha256": "c17d878535fa66e4f5618f338a0fc8a9f72c6d81715198b67666d8a07ccb7f1a",
+        "bytes": 4919
+      },
+      "artifact": {
+        "sha256": "6292c73a476cce68eea7b218fcd427381edb8725b1590749293308b38a69ae12",
+        "bytes": 710562
+      },
+      "browser_receipt": "dataflow-data-pipeline.visual-check.json",
+      "diagnostics": [],
+      "stderr": ""
+    }
+  ],
+  "visual_review": "not assessed by this automated command"
+}
