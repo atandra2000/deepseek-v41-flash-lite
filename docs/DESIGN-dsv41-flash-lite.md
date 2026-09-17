@@ -6,7 +6,8 @@
 > complete: trainer/recovery, GateRunner, executable variants and matched-token
 > controls are CPU-verified (toy C0–C6 and bitwise repeat). Task 10 production
 > corpus prep is blocked on external sources (full 50,257-entry GPT-2
-> tokenizer.json + FineWeb-Edu/DataComp). A100
+> tokenizer.json + FineWeb-Edu/DataComp). Task 14 headline metrics are
+> CPU-measured at toy dims (results/eval-headline-toy.json); A100
 > 200-step bitwise repeat and C0–C6 measured evidence remain for Task 12.
 > This document pins the architecture contract; the
 > [execution plan](EXECUTION-PLAN-dsv41-flash-lite.md) pins the build order.

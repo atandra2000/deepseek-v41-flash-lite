@@ -260,15 +260,25 @@ recall probe run; all hour logs written.
 
 **Targets:** `scripts/eval_headline.py`, `results/`.
 
-- [ ] Headline metrics: measured global-KV bytes/token FP8-vs-BF16;
-      sparse-vs-full recall probes at 16K (success bar: ≥ dense − 3% at
-      ~10× KV reduction); prefill/decode asymmetry at 4K and 16K.
+- [x] Headline metrics (CPU-measured, toy dims — production 16K/A100 execution
+      pending): `scripts/eval_headline.py` measures global-KV bytes/token
+      FP8-vs-BF16 through `models/cache.GenerationCache.global_kv_bytes` over
+      live decode buffers, sparse-vs-full recall (the exhaustive-selection
+      control is the same weights with data-free selection scalars widened —
+      no architecture relabeling; per-index-source overlap + end-to-end logit
+      divergence), and prefill/decode asymmetry through the same forward.
+      CPU-tested (`tests/test_eval_headline.py`, 6 tests); sample evidence
+      committed at `results/eval-headline-toy.json`. The ≥ dense − 3% at ~10×
+      KV-reduction bar is judged at 16K on the A100 session, not here.
 - [ ] Ablations: CED/mHC/Engram on-off (matched tokens), mode-layout sweep,
       FP8 delta; effort-control frontier from P3.
 - [ ] Final report: measured results vs every prediction in the candidate
       doc; every deviation from the design listed with its gate evidence.
 
-**Verify:** `results/` contains the metric bundle + report; README updated.
+**Verify:** `tests/test_eval_headline.py -q` green (6 CPU tests: cache
+accounting cross-check, overlap unit, recall/asymmetry end-to-end, CLI);
+`results/` holds the toy-dims evidence bundle (`eval-headline-toy.json`).
+Full metric bundle + report after the A100 session; README updated then.
 
 ## Dependency summary and stop conditions
 

@@ -1,0 +1,43 @@
+{
+  "config_sha256": "1dd26f3a534e65b032e3eed2a0e220b74494f3ab9ec2a53bbbde40dee26216a0",
+  "decode_asymmetry": {
+    "asymmetry_ratio": 14.887,
+    "decode_ms_per_token": 1.5946,
+    "decode_s": 0.003189,
+    "decode_steps": 2,
+    "prefill_ms_per_token": 0.1071,
+    "prefill_s": 0.002571,
+    "prefill_tokens": 24
+  },
+  "decode_steps": 2,
+  "device": "cpu",
+  "global_kv": {
+    "compress_len": 13,
+    "context_len": 26,
+    "global_kv_bytes_per_token_bf16": 44.0,
+    "global_kv_bytes_per_token_fp8": 22.0,
+    "local_kv_bytes_bf16": 192,
+    "local_kv_bytes_fp8": 96,
+    "pool_capacity": 8
+  },
+  "recall": {
+    "identical": false,
+    "layers": {
+      "layer0": {
+        "covered_of_full": 144,
+        "full_k": 12,
+        "recall": 0.555556,
+        "sparse_k": 4
+      },
+      "layer1": {
+        "covered_of_full": 300,
+        "full_k": 24,
+        "recall": 0.3,
+        "sparse_k": 4
+      }
+    },
+    "logit_max_abs_diff": 0.009243384003639221,
+    "logit_mean_abs_diff": 0.0008693569689057767
+  },
+  "seq": 24
+}
