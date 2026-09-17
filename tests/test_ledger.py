@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import torch
 
 from models.config import LiteConfig, load_config
-from models.csa2 import layer_mode, mode_table
+from models.csa2 import layer_mode
 from models.transformer import Transformer
 
 
@@ -56,7 +56,7 @@ def test_producer_and_mode_maps(cfg):
     assert pm.producer_of(0) is None and pm.producer_of(1) is None
     assert pm.producer_of(2) == 2 and pm.producer_of(5) == 2  # 2-7 read source 2
     assert pm.producer_of(8) == 8 and pm.producer_of(23) == 8  # 8-23 read source 8
-    modes = {r["layer"]: r["mode"] for r in mode_table(cfg)}
+    modes = {l: layer_mode(cfg, l) for l in range(cfg.n_layers)}
     assert modes[2] == modes[8] == "reindex"  # encoder index sources, no pool yet
     assert modes[12] == "full"  # candidate source
     assert modes[16] == modes[20] == "reindex"  # pool users
@@ -67,7 +67,7 @@ def test_producer_and_mode_maps(cfg):
 def test_layer_mode_contract(cfg):
     # upstream head pattern: backbone layers 0-1 are SWA-only; every other
     # backbone layer compresses (m=2 or m=1); DSpark layers are swa.
-    modes = {r["layer"]: r["mode"] for r in mode_table(cfg)}
+    modes = {l: layer_mode(cfg, l) for l in range(cfg.n_layers)}
     assert modes[0] == modes[1] == "swa"
     for l in range(2, cfg.n_layers):
         assert modes[l] != "swa", f"backbone layer {l} must compress"

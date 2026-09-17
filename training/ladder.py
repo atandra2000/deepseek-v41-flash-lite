@@ -212,19 +212,18 @@ class LadderRunner:
     v2 16-layer dense baseline is not the v3 24-layer model. No implicit migration.
     """
 
-    def __init__(self, probes, approvals, output="runs/ladder.jsonl", *, consumed_hours=0,
-                 consumed_dollars=0, hourly_rate=5.96):
+    def __init__(self, probes, approvals, output="runs/ladder.jsonl", *, consumed_hours=0):
         self.probes, self.approvals = probes, dict(approvals)
         self.output = Path(output)
-        if min(consumed_hours, consumed_dollars, hourly_rate) < 0:
+        if consumed_hours < 0:
             raise ValueError("Negative budget")
-        self.hours, self.dollars, self.rate = consumed_hours, consumed_dollars, hourly_rate
+        self.hours = consumed_hours
         self.started = time.monotonic()
         self.failures = 0
 
     def _budget(self):
         elapsed = (time.monotonic() - self.started) / 3600
-        if elapsed >= 6 or self.hours + elapsed >= 54 or self.dollars + elapsed * self.rate >= 300:
+        if elapsed >= 6 or self.hours + elapsed >= 54:
             raise RuntimeError("Ladder/60%-before-production budget exhausted")
 
     def _append(self, record):

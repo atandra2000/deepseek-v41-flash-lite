@@ -21,24 +21,6 @@ def layer_mode(cfg, layer_id: int) -> str:
     return "reuse"
 
 
-def mode_table(cfg) -> list[dict]:
-    """The whole per-layer mode table as data (the C4 sweep swaps this)."""
-    rows = []
-    for l in range(cfg.n_layers):
-        rows.append(
-            {
-                "layer": l,
-                "side": "enc" if l < cfg.n_encoder_layers else "dec",
-                "m": cfg.compress_ratios[l],
-                "kv_source": cfg.is_kv_source(l),
-                "index_source": cfg.is_index_source(l),
-                "candidate_source": l == cfg.candidate_source_layer,
-                "mode": layer_mode(cfg, l),
-            }
-        )
-    return rows
-
-
 def select_candidate_blocks(logits: torch.Tensor, compress_lens, topk_blocks: int, block_size: int) -> torch.Tensor:
     """Level-1 top-k over position blocks (contract T3, upstream model.py:583-610).
 
@@ -49,7 +31,7 @@ def select_candidate_blocks(logits: torch.Tensor, compress_lens, topk_blocks: in
     scores = scores.unflatten(-1, (-1, block_size)).amax(dim=-1)
     num_blocks = scores.size(-1)
 
-    last = (compress_lens - 1) // block_size if isinstance(compress_lens, torch.Tensor) else (compress_lens - 1) // block_size
+    last = (compress_lens - 1) // block_size
     scores = scores.masked_fill(torch.arange(num_blocks, device=logits.device) == last, torch.inf)
 
     top = scores.topk(min(topk_blocks, num_blocks), dim=-1)

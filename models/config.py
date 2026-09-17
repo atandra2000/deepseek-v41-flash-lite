@@ -105,10 +105,6 @@ class LiteConfig:
     # ---- derived layer maps (data tables, per the contract) ----
 
     @property
-    def encoder_layers(self) -> tuple[int, ...]:
-        return tuple(range(self.n_encoder_layers))
-
-    @property
     def decoder_layers(self) -> tuple[int, ...]:
         return tuple(range(self.n_encoder_layers, self.n_layers))
 
@@ -132,11 +128,6 @@ class LiteConfig:
 
     def is_index_source(self, layer_id: int) -> bool:
         return layer_id in self.index_source_layers
-
-    @property
-    def uses_candidate_pool(self) -> bool:
-        """Whether any layer reads the pool (candidate source < some index source)."""
-        return any(self.candidate_source_layer < l for l in self.index_source_layers)
 
     def compressed_len(self, seq_len: int, layer_id: int) -> int:
         """Global-stream length a layer sees for a full prefill of seq_len tokens."""

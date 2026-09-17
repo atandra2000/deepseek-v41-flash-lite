@@ -129,7 +129,7 @@ def test_mode_table_matches_contract(cfg=None):
     from models.config import load_config
 
     cfg = load_config()
-    modes = {r["layer"]: r["mode"] for r in [{"layer": l, "mode": layer_mode(cfg, l)} for l in range(cfg.n_layers)]}
+    modes = {l: layer_mode(cfg, l) for l in range(cfg.n_layers)}
     assert modes[2] == "reindex" and modes[8] == "reindex"
     assert modes[12] == "full"
     assert modes[16] == modes[20] == "reindex"

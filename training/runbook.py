@@ -67,8 +67,6 @@ def pinned_env(stage_id=0) -> dict:
 
 def env_matches(snapshot) -> bool:
     return snapshot == env_snapshot()
-
-
 def write_json_atomic(record, path) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -114,9 +112,12 @@ def pin_probes(data_root, out_path, *, config=None, sequence_length=None, fixtur
 
 
 def repeat(trainer_factory, out_path, env_path=None) -> dict:
-    """200-step bitwise-repeat driver; evidence records the pin it ran under."""
+    """200-step bitwise-repeat driver; refuses to run unless the determinism
+    environment still matches the recorded pin (both sessions and the ladder)."""
     from training.ladder import bitwise_repeat
 
+    if env_path is not None and not env_matches(json.loads(Path(env_path).read_text())):
+        raise RuntimeError("Environment drifted from the recorded pin; aborting before GPU spend")
     evidence = bitwise_repeat(trainer_factory)
     evidence["env_sha256"] = None if env_path is None else sha256_file(env_path)
     write_json_atomic(evidence, out_path)
@@ -221,9 +222,6 @@ def main():
         class Adapter:  # closing the trainer also closes the dataset
             def __init__(self, trainer, data):
                 self._trainer, self._data = trainer, data
-
-            def train_step(self):
-                return self._trainer.train_step()
 
             def close(self):
                 self._trainer.close()
