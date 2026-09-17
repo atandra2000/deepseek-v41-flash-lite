@@ -15,22 +15,35 @@ from .ced import CEDRuntime, CedProjection, Compressor, ced_attention_forward
 from .engram import Engram
 from .indexer import Indexer
 from .layers import RMSNorm, init_std_
-from .mhc import HCMixes
-from .moe import MoE
+from .mhc import HCMixes, PlainResidual
+from .moe import Expert, MoE
+from .variants import FULL, VariantSpec
 from .vit import IMAGE, IMAGE_END, IMAGE_NEW_LINE, IMAGE_START
 
 
 class Block(nn.Module):
-    def __init__(self, cfg, layer_id: int, n_layers: int, max_seq_len: int | None = None):
+    def __init__(self, cfg, layer_id: int, n_layers: int, max_seq_len: int | None = None,
+                 variant: VariantSpec | None = None):
         super().__init__()
         self.layer_id = layer_id
         self.cfg = cfg
+        self.variant = FULL if variant is None else variant
         self.attn = Attention(cfg, layer_id, n_layers, max_seq_len=max_seq_len)
-        self.ffn = MoE(cfg, n_layers)
+        if self.variant.moe:
+            self.ffn = MoE(cfg, n_layers)
+        else:
+            # Dense control with the routed top-k + shared experts' combined
+            # active FFN width (C0 baseline; matched active parameters).
+            inter = (cfg.n_activated_experts + cfg.n_shared_experts) * cfg.moe_inter_dim
+            self.ffn = Expert(cfg.d_model, inter, swiglu_limit=0, n_layers=n_layers)
         self.attn_norm = RMSNorm(cfg.d_model, cfg.norm_eps)
         self.ffn_norm = RMSNorm(cfg.d_model, cfg.norm_eps)
-        self.hc_attn = HCMixes(cfg, "attn")
-        self.hc_ffn = HCMixes(cfg, "ffn")
+        self.hc_attn = HCMixes(cfg, "attn") if self.variant.mhc else PlainResidual(cfg, "attn")
+        self.hc_ffn = HCMixes(cfg, "ffn") if self.variant.mhc else PlainResidual(cfg, "ffn")
+        if self.variant.mhc_frozen:  # C5 fallback: identity-frozen mHC
+            for hc in (self.hc_attn, self.hc_ffn):
+                for p in hc.parameters():
+                    p.requires_grad_(False)
         self.compressor: Compressor | None = None
         if cfg.global_kv_path(layer_id) == "own":
             self.compressor = Compressor(cfg, layer_id)
@@ -38,7 +51,7 @@ class Block(nn.Module):
         if cfg.global_kv_path(layer_id) == "project":
             self.ced_projection = CedProjection(cfg)
         self.indexer: Indexer | None = None
-        if cfg.is_index_source(layer_id):
+        if self.variant.csa2 and cfg.is_index_source(layer_id):
             self.indexer = Indexer(cfg, layer_id)
         self.engram: Engram | None = None
         if layer_id in cfg.engram_layer_ids:
@@ -69,18 +82,25 @@ class Block(nn.Module):
         f_pre, f_post, f_comb = self.hc_ffn(h)
         x_c = HCMixes.hc_pre(h, a_pre)
         x_c = self.ffn_norm(x_c)
-        x_c = self.ffn(x_c, image_mask)
+        if self.variant.moe:
+            x_c = self.ffn(x_c, image_mask)
+        else:
+            x_c = self.ffn(x_c)
         h = HCMixes.hc_post(x_c, residual, f_post, f_comb)
         return h, f_pre
 
 
 class Transformer(nn.Module):
-    def __init__(self, cfg, max_seq_len: int | None = None):
+    def __init__(self, cfg, max_seq_len: int | None = None, variant: VariantSpec | None = None):
         super().__init__()
         self.cfg = cfg
+        self.variant = FULL if variant is None else variant
         self.embed = nn.Embedding(cfg.vocab_size, cfg.d_model)
         init_std_(self.embed.weight)
-        self.blocks = nn.ModuleList([Block(cfg, l, cfg.n_layers, max_seq_len=max_seq_len) for l in range(cfg.n_layers)])
+        self.blocks = nn.ModuleList(
+            [Block(cfg, l, cfg.n_layers, max_seq_len=max_seq_len, variant=self.variant)
+             for l in range(cfg.n_layers)]
+        )
         # cross-layer publishes persist across prefill/decode calls (upstream
         # keeps one global SharedAttentionRuntime per process)
         self.shared_attn = SharedAttentionRuntime()

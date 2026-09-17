@@ -4,6 +4,20 @@ import torch
 from torch import nn
 
 
+class PlainResidual(nn.Module):
+    """mHC-off variant stand-in (hc_mult 1): standard residual, no mixing
+    parameters. Same forward interface as HCMixes so Block wiring is
+    unchanged; pre/post/comb collapse to the identity."""
+
+    def __init__(self, cfg, which: str):
+        super().__init__()
+        assert cfg.hc_mult == 1, "PlainResidual pairs with the derived hc_mult 1"
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        ones = x.new_ones(x.size(0), x.size(1), 1)
+        return ones, ones, ones.unsqueeze(-1)
+
+
 class HCMixes(nn.Module):
     """Per-block coefficient generator (upstream Block.hc_mixes + hc_split_sinkhorn).
 

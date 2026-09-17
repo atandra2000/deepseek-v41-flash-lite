@@ -174,10 +174,11 @@ class LiteConfig:
         assert self.pool_capacity >= self.index_topk, "pool must cover top-k"
         assert self.n_activated_experts <= self.n_routed_experts
         assert self.tie_word_embeddings, "Lite vocab is tied (D4)"
-        assert self.dspark_target_layer_ids[-1] < self.n_layers
-        assert set(self.dspark_target_layer_ids) <= set(range(self.n_encoder_layers, self.n_layers)), (
-            "DSpark targets decoder layers only (upstream pattern: tail layers)"
-        )
+        if self.dspark_target_layer_ids:  # gate variants strip the drafter
+            assert self.dspark_target_layer_ids[-1] < self.n_layers
+            assert set(self.dspark_target_layer_ids) <= set(range(self.n_encoder_layers, self.n_layers)), (
+                "DSpark targets decoder layers only (upstream pattern: tail layers)"
+            )
         assert self.vocab_size % 2 == 0
         assert 0 <= self.image_token_id < self.vocab_size
 

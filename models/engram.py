@@ -116,6 +116,8 @@ class Engram(nn.Module):
         if token_mask is not None:
             gate = gate.masked_fill(~token_mask.unsqueeze(-1), 0)
         gate = gate * self.gate_scale  # Lite: zero-init, exact-0 output at step 0
+        # C6 evidence: per-forward gate magnitude (training/ladder.py collector).
+        self.last_gate_magnitude = gate.detach().abs().max()
         return (h + gate.unsqueeze(-1) * value.float().unsqueeze(-2)).to(x.dtype)
 
 
