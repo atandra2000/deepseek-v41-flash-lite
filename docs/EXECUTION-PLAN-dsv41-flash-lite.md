@@ -1,11 +1,12 @@
 # DS-V4.1-Flash-Lite — Execution Plan
 
-> **Status:** implementation plan for [candidate 13](../../llm-research/candidates/13-deepseek-v41-flash.md)
+> **Status:** implementation plan for [candidate 13](../../../llm-research/candidates/13-deepseek-v41-flash.md)
 > v3 and the [design specification](DESIGN-dsv41-flash-lite.md). Phase 0, 1, 2
-> complete (Tasks 1–9 green). Phase 3 (Data & Trainer) in progress: Task 10
-> code + fixture tests green; production corpus prep and preflight on the full
-> manifest remain open (no full GPT-2 tokenizer.json or production sources
-> prepared yet).
+> complete (Tasks 1–9 green). Phase 3 (Data & Trainer): Task 10 code + fixture
+> tests green (production corpus prep open); Task 11 trainer/recovery and
+> gate-evaluation infrastructure are CPU-verified. Task 11 remains open:
+> executable architecture variants/control-run adapters are not implemented.
+> A100 200-step bitwise repeat and C0–C6 measured evidence remain for Task 12.
 > Sequencing: DiffusionGemma-Lite / HiLS-Attention-Lite training debt and the
 > Gemma-4-E2B decision come first (candidate §11.4).
 
@@ -183,18 +184,24 @@ pending production sources.
 **Targets:** `training/pretrain.py`, `training/ladder.py`,
 `tests/test_training.py`.
 
-- [ ] AdamW per design §5; clip 1.0 with auto-fail (>5% of last 100 steps);
+- [x] AdamW per design §5; clip 1.0 with auto-fail (>5% of last 100 steps);
       nonfinite guard with checkpoint rollback (max 3).
-- [ ] Atomic checkpoints (tmp→fsync→rename, ≤30 min) embedding
+- [x] Atomic checkpoints (tmp→fsync→rename, ≤30 min) embedding
       model/optimizer/RNG/data-position/config-hash; resume validated
       against the manifest; smoke step asserting loss continuity ≤1e-3.
-- [ ] Ladder runner implements gates C0–C6 with the candidate's numeric
-      bars, fixed probe set (512 sha-pinned batches), and the bitwise
-      200-step repeat check; gate results appended to `runs/ladder.jsonl`.
+      *(Verified on CPU: resume == uninterrupted weights+optimizer+RNG+data
+      position, activation checkpointing on and off, real CED toy model and
+      manifest-bound PackedDataset.)*
+- [ ] End-to-end C0–C6 ladder: numeric evaluator, fixed probe set (512
+      sha-pinned batches), 200-step repeat utility and callback orchestration
+      with JSONL evidence are implemented and CPU-tested. Actual architecture
+      variants and matched-token control-run adapters remain unimplemented;
+      the checked-in 24L model cannot represent dense C0. This is remaining
+      Task 11 development work, distinct from Task 12 GPU evidence.
 
 **Verify:** CPU deterministic-resume test (resume == uninterrupted weights
-+ optimizer + data position); two consecutive 200-step GPU runs bitwise
-identical on the first A100 session (Task 12).
++ optimizer + data position) — green. Two consecutive 200-step GPU runs
+bitwise identical on the first A100 session — pending (Task 12).
 
 ## Phase 4 — A100 evidence
 

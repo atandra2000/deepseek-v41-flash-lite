@@ -12,8 +12,9 @@ import torch.nn.functional as F
 from torch import nn
 
 from .attention import Attention
-from .layers import RMSNorm, apply_rotary_emb, init_scaled_output_, init_std_
+from .layers import RMSNorm, apply_rotary_emb, init_std_
 from .mhc import HCMixes
+from .moe import Expert
 
 
 def get_dspark_topk_idxs(window_size: int, bsz: int, block_size: int, start_pos: int) -> torch.Tensor:
@@ -89,26 +90,6 @@ class DSparkAttention(Attention):
         return self.attend(q, kv_cat, topk_idxs, start_pos + main_len, block_size)
 
 
-class DSparkExpertFFN(nn.Module):
-    """Dense SwiGLU FFN (Lite: no routed experts in the drafter)."""
-
-    def __init__(self, cfg, n_layers: int):
-        super().__init__()
-        d, inter = cfg.d_model, cfg.dspark_inter_dim
-        self.w1 = nn.Linear(d, inter, bias=False)
-        self.w2 = nn.Linear(inter, d, bias=False)
-        self.w3 = nn.Linear(d, inter, bias=False)
-        init_std_(self.w1.weight)
-        init_std_(self.w3.weight)
-        init_scaled_output_(self.w2.weight, n_layers)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # dense SwiGLU (no swiglu_limit clamp — that belongs to the routed MoE experts)
-        gate = self.w1(x).float()
-        up = self.w3(x).float()
-        return self.w2((torch.nn.functional.silu(gate) * up).to(x.dtype))
-
-
 class DSparkMarkovHead(nn.Module):
     """markov_rank embedding + vocab head over the full vocab (contract T6)."""
 
@@ -147,7 +128,7 @@ class DSparkBlock(nn.Module):
         self.noise_token_id = cfg.dspark_noise_token_id
         self.attn = DSparkAttention(cfg, layer_id=cfg.n_layers + stage_id, n_layers=n_layers)  # ratio 0 required
         assert self.attn.compress_ratio == 0, "DSpark blocks are SWA-only (ratio 0)"
-        self.ffn = DSparkExpertFFN(cfg, n_layers)
+        self.ffn = Expert(cfg.d_model, cfg.dspark_inter_dim, swiglu_limit=0, n_layers=n_layers)
         self.attn_norm = RMSNorm(cfg.d_model, cfg.norm_eps)
         self.ffn_norm = RMSNorm(cfg.d_model, cfg.norm_eps)
         self.hc_attn = HCMixes(cfg, "attn")

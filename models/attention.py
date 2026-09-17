@@ -181,18 +181,12 @@ class Attention(nn.Module):
         o = torch.einsum("bsgd,grd->bsgr", o.float(), wo_a.float())
         return self.wo_b(o.flatten(2).to(o.dtype))
 
-    def forward(self, x: torch.Tensor, start_pos: int, qr: torch.Tensor | None = None, shared: SharedAttentionRuntime | None = None) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, start_pos: int) -> torch.Tensor:
         """SWA-only path (ratio 0). Compressing layers are driven by
         Transformer/ced wiring, which reuses q_proj/attend around the indexer
-        and compressor. qr: precomputed q-Lora latent (ced wiring path)."""
+        and compressor."""
         assert self.compress_ratio == 0, "compressing layers go through the CED wiring"
-        q = None
-        if qr is None:
-            q, _ = self.q_proj(x, start_pos)
-        else:
-            q = self.wq_b(qr).unflatten(-1, (self.n_heads, self.head_dim))
-            q_tail = apply_rotary_emb(q[..., -self.rope_head_dim :], self.freqs_cis[start_pos : start_pos + x.size(1)])
-            q = torch.cat([q[..., : -self.rope_head_dim], q_tail], dim=-1)
+        q, _ = self.q_proj(x, start_pos)
         window_kv, window_idxs = self._window_kv(x, start_pos)
         o = self.attend(q, window_kv, window_idxs, start_pos, x.size(1))
         return o

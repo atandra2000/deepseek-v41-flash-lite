@@ -91,11 +91,7 @@ class Transformer(nn.Module):
 
             self.ngram_hash = NgramHashState(cfg, max_seq_len or cfg.context_train_stage2)
         self.norm = RMSNorm(cfg.d_model, cfg.norm_eps)
-        if cfg.tie_word_embeddings:
-            self.head: nn.Linear | None = None
-        else:
-            self.head = nn.Linear(cfg.d_model, cfg.vocab_size, bias=False)
-            init_std_(self.head.weight)
+        self.head = None  # Lite requires a tied embedding/head.
 
         self.vision = None
         self.aligner = None
@@ -125,8 +121,6 @@ class Transformer(nn.Module):
             )
 
     def head_weight(self) -> torch.Tensor:
-        if self.head is not None:
-            return self.head.weight
         return self.embed.weight
 
     # ---- vision (contract T10) ----

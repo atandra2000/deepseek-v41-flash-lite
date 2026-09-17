@@ -52,7 +52,6 @@ def main() -> int:
         "norms": 0,
         "vision": 0,
         "dspark": 0,
-        "head_untied": 0,
     }
     for blk in model.blocks:
         cats["attention"] += count(blk.attn)
@@ -72,8 +71,6 @@ def main() -> int:
         ) + count(model.image_newline)
     if model.dspark is not None:
         cats["dspark"] = count(model.dspark)
-    if model.head is not None:
-        cats["head_untied"] = count(model.head)
 
     total = sum(cats.values())
     model_total = count(model)

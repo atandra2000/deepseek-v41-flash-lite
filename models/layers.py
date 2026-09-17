@@ -1,4 +1,4 @@
-"""Shared primitives: RMSNorm, rotary embeddings, linear, init helpers.
+"""Shared primitives: RMSNorm, rotary embeddings, init helpers.
 
 Semantics pinned from the upstream reference (docs/architecture-contract.md);
 upstream line references live in the contract, not here.
@@ -18,10 +18,6 @@ def init_scaled_output_(t: torch.Tensor, n_layers: int, std: float = 0.02) -> to
     return init_std_(t, std / (2.0 * n_layers) ** 0.5)
 
 
-def linear(x: torch.Tensor, weight: torch.Tensor, bias: torch.Tensor | None = None) -> torch.Tensor:
-    return nn.functional.linear(x, weight, bias)
-
-
 class RMSNorm(nn.Module):
     def __init__(self, dim: int, eps: float = 1e-6):
         super().__init__()
@@ -38,28 +34,9 @@ class RMSNorm(nn.Module):
 
 
 @torch.no_grad()
-def precompute_freqs_cis(dim: int, seqlen: int, base: float, original_seq_len: int = 0,
-                         factor: float = 1.0, beta_fast: int = 32, beta_slow: int = 1) -> torch.Tensor:
-    """Rotary frequencies as complex exponentials, one row per position.
-
-    With original_seq_len > 0 applies YaRN (upstream model.py:368-389). Lite
-    trains at 4K/16K <= the 65,536 original context, so stage configs pass
-    original_seq_len=0 and keep base theta.
-    """
-    import math
-
+def precompute_freqs_cis(dim: int, seqlen: int, base: float) -> torch.Tensor:
+    """Rotary frequencies, one row per position; Lite uses no YaRN."""
     freqs = 1.0 / (base ** (torch.arange(0, dim, 2, dtype=torch.float32) / dim))
-    if original_seq_len > 0:
-
-        def corrected_dim(rotations: float) -> float:
-            return dim * math.log(original_seq_len / (rotations * 2 * math.pi)) / (2 * math.log(base))
-
-        low = max(math.floor(corrected_dim(beta_fast)), 0)
-        high = min(math.ceil(corrected_dim(beta_slow)), dim - 1)
-        ramp = ((torch.arange(dim // 2, dtype=torch.float32) - low) / max(high - low, 1e-3)).clamp(0, 1)
-        smooth = 1 - ramp
-        freqs = freqs / factor * (1 - smooth) + freqs * smooth
-
     freqs = torch.outer(torch.arange(seqlen, dtype=torch.float32), freqs)
     return torch.polar(torch.ones_like(freqs), freqs)
 
