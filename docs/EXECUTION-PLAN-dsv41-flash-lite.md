@@ -1,8 +1,11 @@
 # DS-V4.1-Flash-Lite — Execution Plan
 
 > **Status:** implementation plan for [candidate 13](../../llm-research/candidates/13-deepseek-v41-flash.md)
-> v3 and the [design specification](DESIGN-dsv41-flash-lite.md). Phase 0, 1, and 2
-> complete (Tasks 1–9 green). Phase 3 (Data & Trainer) next.
+> v3 and the [design specification](DESIGN-dsv41-flash-lite.md). Phase 0, 1, 2
+> complete (Tasks 1–9 green). Phase 3 (Data & Trainer) in progress: Task 10
+> code + fixture tests green; production corpus prep and preflight on the full
+> manifest remain open (no full GPT-2 tokenizer.json or production sources
+> prepared yet).
 > Sequencing: DiffusionGemma-Lite / HiLS-Attention-Lite training debt and the
 > Gemma-4-E2B decision come first (candidate §11.4).
 
@@ -156,16 +159,24 @@ committed under `tests/golden/`.
 
 **Targets:** `data/prepare_data.py`, `data/dataset.py`, `tests/test_data.py`.
 
-- [ ] Offline prep: FineWeb-Edu 20B+2B held-out, ~2B image-text tokens,
-      per-shard sha256 manifests, document-disjoint split, GPT-2 BPE +
-      128 specials, padded vocab 65,536.
-- [ ] Stage-2 packing with ≥30% documents ≥16K tokens (asserted by the
-      loader); resumable deterministic ordering; document-disjointness test.
-- [ ] Production preflight validates manifests/checksums/token bounds before
-      any rental hour is spent.
+- [x] Offline prep machinery: FineWeb-Edu 20B+2B held-out and ~2B image-text
+      budgets enforced by preflight; per-shard sha256 manifests,
+      document-disjoint content-hash split, GPT-2 BPE + 128 specials, padded
+      vocab 65,536 (`data/prepare_data.py`). *(Production corpus itself not
+      yet prepared — requires the full 50,257-entry GPT-2 tokenizer.json and
+      local FineWeb-Edu/DataComp sources; the strict loader rejects partial
+      vocabularies.)*
+- [x] Stage-2 packing with ≥30% documents ≥16K tokens (asserted by the
+      loader and preflight); resumable deterministic ordering
+      (`data/dataset.py:PackedDataset`); document-disjointness test.
+- [x] Production preflight validates manifests/checksums/token bounds before
+      any rental hour is spent. *(Ran on fixtures only; full-manifest pass
+      pending real sources.)*
 
-**Verify:** `pytest tests/test_data.py -q`; preflight passes on the full
-manifest; host-side prep time recorded.
+**Verify:** `pytest tests/test_data.py -q` green (7 CPU tests; prep, packing,
+exact resume, corruption/token-bound rejection, split disjointness, stage-2
+fraction, image spans). Full-manifest preflight and host-side prep time:
+pending production sources.
 
 ### Task 11 — Training loop, determinism and recovery
 

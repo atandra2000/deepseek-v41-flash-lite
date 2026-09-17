@@ -1,7 +1,9 @@
 # DS-V4.1-Flash-Lite — Design Specification
 
 > **Status:** design for [candidate 13](../../llm-research/candidates/13-deepseek-v41-flash.md) v3
-> (2026-09-16). Phase 0, Phase 1, and Phase 2 complete (Tasks 1–9 green).
+> (2026-09-16). Phase 0, Phase 1, and Phase 2 complete (Tasks 1–9 green);
+> Phase 3 in progress (Task 10 data machinery green; production corpus prep
+> pending).
 > This document pins the architecture contract; the
 > [execution plan](EXECUTION-PLAN-dsv41-flash-lite.md) pins the build order.
 > All upstream facts were cross-checked against the released `config.json` on
