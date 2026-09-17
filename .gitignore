@@ -43,3 +43,5 @@ results/*.pt
 # Local tool artifacts
 .benchmarks/
 .qoder/
+.claude/
+.pytest_cache/

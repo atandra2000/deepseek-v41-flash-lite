@@ -71,6 +71,36 @@ def test_bitwise_repeat():
         bitwise_repeat(Different)
 
 
+def test_stage_exception_retried_once_then_aborts(tmp_path):
+    probes = ProbeSet([torch.tensor([i]) for i in range(512)],
+                      [batch_sha256(torch.tensor([i])) for i in range(512)])
+    approvals = {f"{s}:default": "approved" for s in STEPS}
+    approvals["C4:layout2"] = "approved2"
+    output = tmp_path / "ladder.jsonl"
+    calls = {"n": 0}
+
+    def flaky(request, probes):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("transient divergence")
+        path = tmp_path / f"{request.stage}-{request.variant}.pt"
+        path.write_bytes(b"fixture checkpoint")
+        return {"config_sha256": request.approved_config_sha256,
+                "checkpoint": str(path), "metrics": evidence(request.stage)}
+
+    assert LadderRunner(probes, approvals, output).run(flaky).endswith("C6-default.pt")
+    assert calls["n"] == 9  # 8 stage attempts (7 + C4:layout2) + 1 bounded retry
+
+    def broken(request, probes):
+        raise RuntimeError("diverged")
+
+    with pytest.raises(RuntimeError, match="diverged"):
+        LadderRunner(probes, approvals, output, consumed_hours=0).run(broken)
+    records = [json.loads(x) for x in output.read_text().splitlines()]
+    assert len(records) == 11  # 9 from the flaky run + 2 retry records from the abort
+    assert records[9]["attempt"] == 1 and records[10]["attempt"] == 2
+
+
 def test_runner_records_actual_callbacks_and_both_layouts(tmp_path):
     probes = ProbeSet([torch.tensor([i]) for i in range(512)],
                       [batch_sha256(torch.tensor([i])) for i in range(512)])

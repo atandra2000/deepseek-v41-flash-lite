@@ -237,18 +237,27 @@ class LadderRunner:
                 key = f"{stage}:{variant}"
                 if key not in self.approvals:
                     raise ValueError(f"Missing explicit config approval for {key}")
-                request = StageRequest(stage, variant, STEPS[stage], checkpoint,
-                                       self.approvals[key], self.probes.verify())
-                try:
-                    result = run_stage(request, self.probes)
-                    self._budget()
-                    if self.probes.verify() != request.probe_sha256:
-                        raise ValueError("Probe set changed during gate")
-                except Exception as exc:
-                    self._append({**request.__dict__, "passed": False,
-                                  "reasons": [f"{type(exc).__name__}: {exc}"],
-                                  "checkpoint": checkpoint})
-                    raise
+                # One bounded retry per stage attempt (plan: "one retry each");
+                # a second consecutive exception is an environment bug — the
+                # ladder aborts for local diagnosis. Failed gate *decisions*
+                # (not exceptions) walk the pre-approved fallback variants.
+                for attempt in (1, 2):
+                    request = StageRequest(stage, variant, STEPS[stage], checkpoint,
+                                           self.approvals[key], self.probes.verify())
+                    try:
+                        result = run_stage(request, self.probes)
+                        self._budget()
+                        if self.probes.verify() != request.probe_sha256:
+                            raise ValueError("Probe set changed during gate")
+                    except Exception as exc:
+                        self._append({**request.__dict__, "attempt": attempt,
+                                      "passed": False,
+                                      "reasons": [f"{type(exc).__name__}: {exc}"],
+                                      "checkpoint": checkpoint})
+                        if attempt == 2:
+                            raise
+                        continue
+                    break
                 if result.get("config_sha256") != request.approved_config_sha256:
                     raise ValueError("Gate config does not match approved hash")
                 decision = evaluate_gate(stage, result["metrics"])

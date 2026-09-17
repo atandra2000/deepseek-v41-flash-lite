@@ -10,7 +10,11 @@
 - `ladder.py` — C0–C6 numeric gate evaluation (candidate §8), exactly-512
   sha-pinned probe batches, 200-step bitwise-repeat check, and a
   callback-based runner with pre-approved fallback order and JSONL evidence
-  (`runs/ladder.jsonl`). Stage callbacks must construct the named
+  (`runs/ladder.jsonl`). A stage callback that *raises* gets exactly one
+  bounded retry (the plan's "one retry each"); a second consecutive exception
+  aborts the ladder for local diagnosis (stop-condition: "fails twice →
+  environment bug"). Failed gate *decisions* — not exceptions — walk the
+  pre-approved fallback variants. Stage callbacks must construct the named
   architecture variant (dense C0, +MoE, +SWA, +CED, +CSA2, +mHC, +Engram);
   no variant is claimed on the full 24-layer model until those toggles exist.
 
