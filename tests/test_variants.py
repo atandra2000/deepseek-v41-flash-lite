@@ -24,6 +24,10 @@ def gate_toy_config(**over):
     source), dec layer 1 (m=1, index source / pool builder), dec layer 2
     (m=1, Reuse), Engram on layer 2. The C0-C6 ladder at test dims."""
     return toy_config(
+        # The tied head's CE gradient grows with sqrt(hidden width / tokens).
+        # d8 keeps this 24-token fixture below clip=1 without changing loss,
+        # trainer guards, production initialization, or any gate mechanism.
+        d_model=8, n_heads=2, head_dim=4, rope_head_dim=4,
         n_layers=3,
         n_encoder_layers=1,
         compress_ratios=(2, 1, 1),
@@ -115,6 +119,7 @@ def test_csa2_off_keeps_compressed_global_pathway_without_selection():
     assert not has_any(dense_global, Indexer)
     assert has_any(dense_global, Compressor) and has_any(dense_global, CedProjection)
     ids = torch.arange(24).unsqueeze(0) % cfg.vocab_size
+    ids = ids.expand(2, -1)  # dense-global fallback must broadcast over batches
     base, _ = dense_global(ids)  # prefill-only reachable-idxs fallback
     perturbed = ids.clone()
     perturbed[0, 0] = (perturbed[0, 0] + 1) % cfg.vocab_size

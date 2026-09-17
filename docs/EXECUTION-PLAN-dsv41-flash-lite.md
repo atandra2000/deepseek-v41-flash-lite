@@ -3,9 +3,8 @@
 > **Status:** implementation plan for [candidate 13](../../../llm-research/candidates/13-deepseek-v41-flash.md)
 > v3 and the [design specification](DESIGN-dsv41-flash-lite.md). Phase 0, 1, 2
 > complete (Tasks 1–9 green). Phase 3 (Data & Trainer): Task 10 code + fixture
-> tests green (production corpus prep open); Task 11 trainer/recovery and
-> gate-evaluation infrastructure are CPU-verified. Task 11 remains open:
-> executable architecture variants/control-run adapters are not implemented.
+> tests green (production corpus prep open); Task 11 complete: trainer/recovery,
+> GateRunner, executable variants and matched-token controls are CPU-verified.
 > A100 200-step bitwise repeat and C0–C6 measured evidence remain for Task 12.
 > Sequencing: DiffusionGemma-Lite / HiLS-Attention-Lite training debt and the
 > Gemma-4-E2B decision come first (candidate §11.4).
@@ -192,12 +191,15 @@ pending production sources.
       *(Verified on CPU: resume == uninterrupted weights+optimizer+RNG+data
       position, activation checkpointing on and off, real CED toy model and
       manifest-bound PackedDataset.)*
-- [ ] End-to-end C0–C6 ladder: numeric evaluator, fixed probe set (512
-      sha-pinned batches), 200-step repeat utility and callback orchestration
-      with JSONL evidence are implemented and CPU-tested. Actual architecture
-      variants and matched-token control-run adapters remain unimplemented;
-      the checked-in 24L model cannot represent dense C0. This is remaining
-      Task 11 development work, distinct from Task 12 GPU evidence.
+- [x] End-to-end C0–C6 ladder: numeric evaluator, fixed probe set (512
+      sha-pinned batches), 200-step repeat utility, GateRunner architecture
+      variants and matched-token controls are CPU-verified with real training.
+      All seven default gates pass at d8 toy dims with balanced +1-shift
+      batches; clip guard and numeric bars are unchanged. The three-layer
+      fixture cannot instantiate production C4 layout2/layout3 tables and
+      explicitly excludes that sweep (fallback orchestration tested separately).
+      Only A100 bitwise repeat and measured production C0–C6 evidence remain
+      for Task 12; CPU results are not production-quality evidence.
 
 **Verify:** CPU deterministic-resume test (resume == uninterrupted weights
 + optimizer + data position) — green. Two consecutive 200-step GPU runs

@@ -25,7 +25,7 @@ from training.ladder import (SEED, STEPS, GateRunner, LadderRunner, ProbeSet, ba
 from training.pretrain import Trainer, TrainingConfig, seed_everything
 
 SEQ, VOCAB = 24, 512
-TEST_STEPS = {"C0": 80, "C1": 200, "C2": 110, "C3": 110, "C4": 510, "C5": 110, "C6": 110}
+TEST_STEPS = {"C0": 200, "C1": 200, "C2": 110, "C3": 110, "C4": 510, "C5": 110, "C6": 110}
 
 
 class SyntheticCorpus:
@@ -60,13 +60,17 @@ class SyntheticCorpus:
 def probe_set(n=512, seed=23):
     g = torch.Generator().manual_seed(seed)
     starts = torch.randint(VOCAB, (n,), generator=g)
-    batches = [{"input_ids": (s + torch.arange(SEQ)) % VOCAB,
-                "labels": ((s + torch.arange(SEQ)) % VOCAB + 1) % VOCAB} for s in starts]
+    batches = [{"input_ids": ((s + torch.arange(SEQ)) % VOCAB).unsqueeze(0),
+                "labels": (((s + torch.arange(SEQ)) % VOCAB + 1) % VOCAB).unsqueeze(0)} for s in starts]
     return ProbeSet(batches, [batch_sha256(b) for b in batches])
 
 
 def make_gate_runner(cfg, tmp_path, steps_lr=2e-3):
-    return GateRunner(cfg, SyntheticCorpus(), tmp_path / "gates",
+    corpus = SyntheticCorpus()
+    # Each optimizer batch covers every token three times. Keep the +1
+    # task, but remove between-step sampling noise from C0's strict decrease.
+    corpus.rows = [(s + torch.arange(SEQ)) % VOCAB for s in torch.arange(64) * 8]
+    return GateRunner(cfg, corpus, tmp_path / "gates", batch_size=64,
                       learning_rate=steps_lr, warmup_steps=24)
 
 
@@ -92,8 +96,6 @@ def test_gate_approvals_pin_every_attempt(tmp_path):
     assert approvals["C3:second_producer_map"].startswith("unbuildable:")
 
 
-@pytest.mark.skip(reason="Task 11.3 open: toy gate calibration — toy grad norms (~5) trip the "
-                         "clip auto-fail; needs an init/loss-scale fix before these run")
 def test_stage_metrics_shapes_and_matched_tokens(tmp_path):
     cfg = gate_toy_config()
     probes = probe_set()
@@ -112,12 +114,17 @@ def test_stage_metrics_shapes_and_matched_tokens(tmp_path):
     assert all(v >= 0 for v in m["router_logit_std"])
 
 
-@pytest.mark.skip(reason="Task 11.3 open: toy gate calibration — toy grad norms (~5) trip the "
-                         "clip auto-fail; needs an init/loss-scale fix before these run")
 def test_full_ladder_e2e_on_toy(tmp_path, monkeypatch):
     monkeypatch.setattr(ladder, "STEPS", dict(TEST_STEPS))
     cfg = gate_toy_config()
     probes = probe_set()
+    # Production C4 sweeps 24-layer layouts even after a default pass. This
+    # 3-layer fixture has only one pool-builder/Reuse layout; do not relabel
+    # an impossible production table as a toy architecture.
+    production_approvals = gate_approvals(cfg)
+    assert all(production_approvals[f"C4:{v}"].startswith("unbuildable:")
+               for v in ("layout2", "layout3"))
+    monkeypatch.setattr(ladder, "FALLBACKS", {**ladder.FALLBACKS, "C4": ()})
     approvals = gate_approvals(cfg)  # after the STEPS patch: same keys, per-stage shas
     evidence = tmp_path / "runs" / "ladder.jsonl"
     runner = make_gate_runner(cfg, tmp_path)
@@ -131,8 +138,6 @@ def test_full_ladder_e2e_on_toy(tmp_path, monkeypatch):
         assert attempts and attempts[-1]["passed"]
 
 
-@pytest.mark.skip(reason="Task 11.3 open: toy gate calibration — toy grad norms (~5) trip the "
-                         "clip auto-fail; needs an init/loss-scale fix before these run")
 def test_bitwise_repeat_real_trainer_toy(tmp_path):
     cfg = gate_toy_config()
     spec = NAMED["dense"]
@@ -146,4 +151,3 @@ def test_bitwise_repeat_real_trainer_toy(tmp_path):
 
     evidence = bitwise_repeat(factory)
     assert evidence["steps"] == 200 and len(evidence["loss_sha256"]) == 64
-

@@ -3,8 +3,8 @@
 > **Status:** design for [candidate 13](../../../llm-research/candidates/13-deepseek-v41-flash.md) v3
 > (2026-09-16). Phase 0, 1, and 2 complete (Tasks 1–9 green); Phase 3:
 > Task 10 code + fixture tests green (production corpus prep open); Task 11
-> trainer/recovery and gate-evaluation infrastructure are CPU-verified, with
-> executable architecture variants/control-run adapters remaining. A100
+> complete: trainer/recovery, GateRunner, executable variants and matched-token
+> controls are CPU-verified (toy C0–C6 and bitwise repeat). A100
 > 200-step bitwise repeat and C0–C6 measured evidence remain for Task 12.
 > This document pins the architecture contract; the
 > [execution plan](EXECUTION-PLAN-dsv41-flash-lite.md) pins the build order.

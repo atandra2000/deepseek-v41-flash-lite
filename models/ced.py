@@ -199,6 +199,7 @@ def ced_attention_forward(attn, x: torch.Tensor, start_pos: int, ced: CEDRuntime
         idxs = shared.topk_idxs  # reuse (upstream _compress_topk_idxs)
     else:
         idxs = reachable_idxs(compress_len, start_pos, seqlen, offset, x.device)
+        idxs = idxs.expand(x.size(0), -1, -1)  # batch-independent causal indices
         shared.topk_idxs = idxs
         shared.topk_ratio = ratio
 
