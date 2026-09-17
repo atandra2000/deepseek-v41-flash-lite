@@ -122,6 +122,40 @@ def test_nonfinite_rollback_skips_batches_halves_lr_and_bounds_retries(tmp_path)
     t.close()
 
 
+def test_guarded_step_reports_retries(tmp_path):
+    from training.pretrain import NonfiniteError
+    t = trainer(tmp_path / "run")
+    real_step, calls = t.train_step, {"n": 0}
+
+    def fail_first():
+        calls["n"] += 1
+        if calls["n"] == 1:
+            next(t.dataset)
+            raise NonfiniteError("fixture")
+        return real_step()
+
+    t.train_step = fail_first
+    t.save_checkpoint()  # run() always saves before stepping; rollback needs it
+    record, retried = t.guarded_step()
+    assert retried and record["step"] == 1 and t.rollbacks == 1 and t.lr_scale == .5
+    t.close()
+
+
+def test_router_z_loss_adds_penalty_and_survives_checkpoint_replay(tmp_path):
+    base = trainer(tmp_path / "z0")
+    zed = trainer(tmp_path / "z1")  # same seed -> identical weights
+    zed.config.router_z_loss = 1e-2
+    x = next(base.dataset)
+    batch = {"input_ids": x["input_ids"].unsqueeze(0), "labels": x["labels"].unsqueeze(0),
+             "image_mask": torch.zeros(1, 8, dtype=torch.bool), "images": [[]]}
+    l_plain, l_z = base._loss(batch), zed._loss(batch)
+    assert torch.isfinite(l_z) and l_z > l_plain
+    (l_z / 8).backward()  # activation checkpointing replays the stash too
+    assert zed.model.blocks[0].ffn.gate.weight.grad is not None
+    base.close()
+    zed.close()
+
+
 def test_optimizer_groups_retention_and_clip_guard(tmp_path, monkeypatch):
     from training.pretrain import TrainingFailure
     t = trainer(tmp_path / "run")

@@ -50,13 +50,15 @@ class TrainingConfig:
     compile_model: bool = False
     router_bias_rate: float = 1e-3
     text_only: bool = True
+    router_z_loss: float = 0.0  # C1 fallback "router_z_loss_1e-3"
 
     def __post_init__(self):
         if any(type(v) is not int or v < 1 for v in (self.max_steps, self.batch_size, self.accumulation_steps)):
             raise ValueError("Step and batch counts must be positive integers")
         if self.warmup_steps < 0 or self.stage_id < 0 or not 0 < self.checkpoint_seconds <= 1800:
             raise ValueError("Invalid warmup/stage/checkpoint interval")
-        if not 0 < self.min_learning_rate <= self.learning_rate or self.weight_decay < 0 or self.router_bias_rate < 0:
+        if (not 0 < self.min_learning_rate <= self.learning_rate or self.weight_decay < 0
+                or self.router_bias_rate < 0 or self.router_z_loss < 0):
             raise ValueError("Invalid optimizer settings")
 
 
@@ -161,6 +163,7 @@ class Trainer:
         self._collect = False
         self._loads = {}
         self._router_std = 0.
+        self._z_logits: list[torch.Tensor] = []
         self._hooks = [m.register_forward_hook(self._route_hook) for m in model.modules() if isinstance(m, Gate)]
         self.forward_model = torch.compile(model) if config.compile_model else model
 
@@ -170,6 +173,10 @@ class Trainer:
         self._hooks.clear()
 
     def _route_hook(self, module, args, output):
+        if self.config.router_z_loss:
+            # stashed in eager AND checkpoint-replay forwards so the penalty
+            # gradient survives activation-checkpoint recompute
+            self._z_logits.append(F.linear(args[0].float(), module.weight.float()))
         if not self._collect:
             return
         with torch.no_grad():
@@ -194,10 +201,17 @@ class Trainer:
         def forward(ids):
             reset_runtime(self.model)
             self._collect = collect and not self._recomputing
+            self._z_logits = []
             try:
                 with torch.autocast(self.device.type, dtype=torch.bfloat16, enabled=self.device.type == "cuda"):
                     logits, _ = self.forward_model(ids, image_mask=batch["image_mask"], images=batch["images"])
-                return F.cross_entropy(logits.float().flatten(0, 1), batch["labels"].flatten(), ignore_index=-100, reduction="sum")
+                loss = F.cross_entropy(logits.float().flatten(0, 1), batch["labels"].flatten(),
+                                       ignore_index=-100, reduction="sum")
+                if self._z_logits:
+                    # router z-loss at the summed-CE scale: per-token (logsumexp)^2
+                    z = sum(zl.logsumexp(-1).square().sum() for zl in self._z_logits)
+                    loss = loss + self.config.router_z_loss * z
+                return loss
             finally:
                 self._collect = False
         self._recomputing = False
@@ -339,16 +353,17 @@ class Trainer:
             raise
         self.last_checkpoint, self.last_save = Path(path), time.monotonic()
 
-    def run(self, steps=None):
-        target = self.config.max_steps if steps is None else self.step + steps
-        if target > self.config.max_steps or target < self.step:
-            raise ValueError("Requested steps exceed configured schedule")
-        if self.last_checkpoint is None:
-            self.save_checkpoint()
-        records = []
-        while self.step < target:
+    def guarded_step(self, on_retry=None):
+        """One optimizer step with the nonfinite guard: rollback → skip 2
+        batches → halve LR, at most 3 retries. This is run()'s loop body,
+        extracted so gate collectors can bracket individual attempts
+        (training/ladder.py). Returns (record, retried); on_retry fires
+        before each post-rollback re-attempt so callers can drop
+        per-attempt collection state."""
+        retried = False
+        while True:
             try:
-                records.append(self.train_step())
+                return self.train_step(), retried
             except NonfiniteError:
                 retries, scale = self.rollbacks + 1, self.lr_scale / 2
                 if retries > 3:
@@ -357,7 +372,21 @@ class Trainer:
                 self.rollbacks, self.lr_scale = retries, scale
                 for _ in range(2):
                     self._batch()
-                records = [r for r in records if r["step"] <= self.step]
+                retried = True
+                if on_retry is not None:
+                    on_retry()
+
+    def run(self, steps=None):
+        target = self.config.max_steps if steps is None else self.step + steps
+        if target > self.config.max_steps or target < self.step:
+            raise ValueError("Requested steps exceed configured schedule")
+        if self.last_checkpoint is None:
+            self.save_checkpoint()
+        records = []
+        while self.step < target:
+            record, _ = self.guarded_step()
+            records.append(record)
+            records = [r for r in records if r["step"] <= self.step]  # drop discarded updates
             if time.monotonic() - self.last_save >= self.config.checkpoint_seconds:
                 self.save_checkpoint()
         self.save_checkpoint()
