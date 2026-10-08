@@ -46,7 +46,10 @@ def test_env_pin_records_and_matches(tmp_path):
     seed_everything(0)
     snap = runbook.pin(tmp_path / "env.json", 0)
     assert snap["cublas_workspace_config"] == ":4096:8" and snap["deterministic"]
-    assert not snap["matmul_tf32"] and snap["device_type"] == "cpu"
+    # The pin records the device it actually found. Hardcoding "cpu" made
+    # this fail on every GPU runner while the pin itself was correct.
+    expected_device = "cuda" if torch.cuda.is_available() else "cpu"
+    assert not snap["matmul_tf32"] and snap["device_type"] == expected_device
     assert json.loads((tmp_path / "env.json").read_text()) == snap
     assert runbook.env_matches(snap)
 

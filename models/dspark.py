@@ -28,7 +28,7 @@ def get_dspark_topk_idxs(window_size: int, bsz: int, block_size: int, start_pos:
             window_size + torch.arange(block_size),
         ]
     )
-    return matrix.int().view(1, 1, -1).expand(bsz, block_size, -1).contiguous()
+    return matrix.long().view(1, 1, -1).expand(bsz, block_size, -1).contiguous()
 
 
 def sample(logits: torch.Tensor, temperature: float = 0.0) -> torch.Tensor:
@@ -168,6 +168,10 @@ class DSparkBlock(nn.Module):
         assert hasattr(self, "main_proj"), "forward_embed runs on stage 0"
         main_hidden = main_hidden.detach()  # P2: frozen backbone, no grads through the projection input
         main_x = self.main_norm(self.main_proj(main_hidden))
+        # Embedding lookup needs int64 indices. The packed shard stream is
+        # uint32, and new_full would carry that dtype through and make
+        # nn.Embedding raise "gather(): Expected dtype int64 for index".
+        input_ids = input_ids.to(torch.long)
         draft_input_ids = input_ids.new_full([input_ids.size(0), self.block_size], self.noise_token_id)
         draft_input_ids[:, 0] = input_ids[:, 0]
         x = model.embed(draft_input_ids)
@@ -181,6 +185,9 @@ class DSparkBlock(nn.Module):
         assert hasattr(self, "norm"), "forward_head runs on the last stage"
         x = HCMixes.hc_pre(x, pre_mix)
         logits = F.linear(self.norm(x).float(), model.head_weight().float())
+        # The markov head gathers on these ids, so they must be int64. The
+        # packed shard stream is uint32 and would be rejected at the gather.
+        input_ids = input_ids.to(torch.long)
         # chain ids through a list, never in-place on one tensor: the markov
         # embed's backward saves its index tensor (in-place writes would
         # invalidate it under grad)

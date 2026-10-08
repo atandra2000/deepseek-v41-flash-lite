@@ -81,7 +81,7 @@ def test_run_end_to_end_and_cli(tmp_path):
     toy_config.write_text(json.dumps({k: list(v) if isinstance(v, tuple) else v
                                       for k, v in CFG.__dict__.items() if k != "sha256"}))
     proc = subprocess.run(
-        [".venv/bin/python", "scripts/eval_headline.py", "--config", str(toy_config),
+        [sys.executable, "scripts/eval_headline.py", "--config", str(toy_config),
          "--seq", "24", "--decode-steps", "2", "--out", str(out)],
         capture_output=True, text=True, check=True, timeout=180)
     written = json.loads(out.read_text())

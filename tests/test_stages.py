@@ -114,6 +114,7 @@ def test_stage_metrics_shapes_and_matched_tokens(tmp_path):
     assert all(v >= 0 for v in m["router_logit_std"])
 
 
+@pytest.mark.timeout(3600)  # 1350 CPU training steps x2 (attempt+control) + fallbacks
 def test_full_ladder_e2e_on_toy(tmp_path, monkeypatch):
     monkeypatch.setattr(ladder, "STEPS", dict(TEST_STEPS))
     cfg = gate_toy_config()
